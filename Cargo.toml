@@ -9,6 +9,19 @@ license = "GPL-3.0-only"
 homepage = "https://codeberg.org/alpha-tango-kilo/chopstick"
 repository = "https://codeberg.org/alpha-tango-kilo/chopstick"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[workspace]
+members = [
+    "chop",
+    "stick",
+]
 
-[dependencies]
+[[bin]]
+name = "chop"
+path = "chop/src/main.rs"
+
+[[bin]]
+name = "stick"
+path = "stick/src/main.rs"
+
+[profile.release]
+lto = true

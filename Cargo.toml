@@ -1,0 +1,14 @@
+[package]
+name = "chopstick"
+description = "A commandline file slicing and unslicing utility"
+categories = ["command-line-utilities"]
+version = "0.1.0"
+edition = "2021"
+readme = "README.md"
+license = "GPL-3.0-only"
+homepage = "https://codeberg.org/alpha-tango-kilo/chopstick"
+repository = "https://codeberg.org/alpha-tango-kilo/chopstick"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]

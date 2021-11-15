@@ -9,19 +9,16 @@ license = "GPL-3.0-only"
 homepage = "https://codeberg.org/alpha-tango-kilo/chopstick"
 repository = "https://codeberg.org/alpha-tango-kilo/chopstick"
 
-[workspace]
-members = [
-    "chop",
-    "stick",
+[dependencies]
+bytesize = "1.1"
+
+[dependencies.clap]
+version = "=3.0.0-beta.5"
+default-features = false
+features = [
+    "std",
+    "color",
 ]
-
-[[bin]]
-name = "chop"
-path = "chop/src/main.rs"
-
-[[bin]]
-name = "stick"
-path = "stick/src/main.rs"
 
 [profile.release]
 lto = true

@@ -1,10 +1,10 @@
+use crate::ChopError::*;
+use crate::*;
 use bytesize::ByteSize;
 use clap::{Arg, ArgMatches};
 use std::fs;
 use std::path::PathBuf;
 use std::str::FromStr;
-use crate::*;
-use crate::ChopError::*;
 
 #[derive(Debug)]
 pub struct RunConfig {
@@ -54,6 +54,7 @@ impl RunConfig {
             )
     }
 
+    // TODO: separate out file size calculation and parsing for better testing
     fn process_matches(clap_matches: &ArgMatches) -> Result<Self> {
         let path: PathBuf = clap_matches.value_of_os("file").unwrap().into();
         let file_size = fs::metadata(&path)?.len();
@@ -87,5 +88,55 @@ impl RunConfig {
 
 #[cfg(test)]
 mod unit_tests {
-    // TODO :)
+    use super::RunConfig;
+
+    // TODO: part size calculations
+
+    #[test]
+    fn requires_file() {
+        let clap = RunConfig::create_clap_app();
+        let err = clap
+            .try_get_matches_from(vec![env!("CARGO_PKG_NAME"), "-n", "5"])
+            .unwrap_err();
+        assert_eq!(err.kind, clap::ErrorKind::MissingRequiredArgument);
+    }
+
+    #[test]
+    fn must_give_part_size_or_num_parts() {
+        // Neither
+        let clap = RunConfig::create_clap_app();
+        let err = clap
+            .try_get_matches_from(vec![env!("CARGO_PKG_NAME"), "Cargo.toml"])
+            .unwrap_err();
+        assert_eq!(err.kind, clap::ErrorKind::MissingRequiredArgument);
+
+        // One
+        let clap = RunConfig::create_clap_app();
+        let matches = clap
+            .try_get_matches_from(vec![env!("CARGO_PKG_NAME"), "-n", "5", "Cargo.toml"])
+            .unwrap();
+        assert!(matches.is_present("num_parts"));
+        assert!(RunConfig::process_matches(&matches).is_ok());
+
+        let clap = RunConfig::create_clap_app();
+        let matches = clap
+            .try_get_matches_from(vec![env!("CARGO_PKG_NAME"), "-s", "512", "Cargo.toml"])
+            .unwrap();
+        assert!(matches.is_present("part_size"));
+        assert!(RunConfig::process_matches(&matches).is_ok());
+
+        // Both
+        let clap = RunConfig::create_clap_app();
+        let err = clap
+            .try_get_matches_from(vec![
+                env!("CARGO_PKG_NAME"),
+                "-n",
+                "5",
+                "-s",
+                "512",
+                "Cargo.toml",
+            ])
+            .unwrap_err();
+        assert_eq!(err.kind, clap::ErrorKind::ArgumentConflict);
+    }
 }

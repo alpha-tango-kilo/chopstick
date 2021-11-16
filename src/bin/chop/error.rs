@@ -3,10 +3,6 @@ use std::{fmt, io};
 
 pub type Result<T> = std::result::Result<T, ChopError>;
 
-pub const fn round_up_div(a: u64, b: u64) -> u64 {
-    a / b + (a % b != 0) as u64
-}
-
 #[derive(Debug)]
 pub enum ChopError {
     Io(io::Error),

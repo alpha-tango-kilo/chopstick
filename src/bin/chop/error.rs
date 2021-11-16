@@ -12,6 +12,18 @@ pub enum ChopError {
     InvalidNumParts,
 }
 
+impl ChopError {
+    pub fn exit_code(&self) -> i32 {
+        match self {
+            ChopError::Io(_) => 2,
+            ChopError::ByteSize(_) => 1,
+            ChopError::PartSizeTooLarge => 1,
+            ChopError::NumPartsTooLarge => 1,
+            ChopError::InvalidNumParts => 1,
+        }
+    }
+}
+
 impl fmt::Display for ChopError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use ChopError::*;

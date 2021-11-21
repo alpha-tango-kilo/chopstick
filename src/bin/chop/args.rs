@@ -1,4 +1,3 @@
-use crate::ChopError::*;
 use crate::*;
 use bytesize::ByteSize;
 use clap::{Arg, ArgMatches};

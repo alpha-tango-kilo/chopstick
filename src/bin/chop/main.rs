@@ -1,3 +1,4 @@
+use crate::ChopError::*;
 use args::RunConfig;
 pub use error::*;
 pub use lib::*;
@@ -26,7 +27,6 @@ fn _main() -> Result<()> {
         .write(true)
         .open(&config.path)?;
 
-    // TODO: more explanatory error variants
     (0..config.split.num_parts)
         .into_iter()
         .rev()
@@ -46,17 +46,28 @@ fn _main() -> Result<()> {
             let mut part_file = OpenOptions::new()
                 .write(true)
                 .create_new(true)
-                .open(&part_path)?;
+                .open(&part_path)
+                .map_err(|err| {
+                    use std::io::ErrorKind::*;
+                    match err.kind() {
+                        AlreadyExists => {
+                            PartFileAlreadyExists(part_path.clone())
+                        }
+                        _ => err.into(),
+                    }
+                })?;
 
             // Step 3: read to end of source file into the buffer
-            handle.read_to_end(&mut buffer)?;
+            handle.read_to_end(&mut buffer).map_err(FailedToReadPart)?;
 
             // Step 4: write buffer to part file, then clear buffer
-            part_file.write_all(&buffer)?;
+            part_file
+                .write_all(&buffer)
+                .map_err(|err| FailedToWritePart(part_path.clone(), err))?;
             buffer.clear();
 
             // Step 5: truncate source file
-            handle.set_len(byte_offset)?;
+            handle.set_len(byte_offset).map_err(FailedToTruncate)?;
 
             Ok(())
         })?;
@@ -64,7 +75,7 @@ fn _main() -> Result<()> {
     // Drop isn't strictly necessary but saves me trying to use it on a
     // soon-to-be deleted file
     mem::drop(handle);
-    fs::remove_file(&config.path)?;
+    fs::remove_file(&config.path).map_err(FailedToDeleteOriginal)?;
 
     Ok(())
 }

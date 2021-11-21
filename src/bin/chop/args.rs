@@ -21,15 +21,16 @@ impl RunConfig {
         clap::App::new(env!("CARGO_PKG_NAME"))
             .version(env!("CARGO_PKG_VERSION"))
             .author("alpha-tango-kilo <git@heyatk.com>")
-            .about("Separate files into chunks quickly")
+            .about("Separate files into parts quickly")
             .arg(
                 Arg::new("part_size")
                     .short('s')
                     .long("size")
                     .about("The maximum size each part should be")
                     .long_about(
-                        "The maximum size each part should be.\
-                        Accepts units - e.g. 1GB, 20K, 128MiB",
+                        "The maximum size each part should be. \
+                        Accepts units - e.g. 1GB, 20K, 128MiB. \
+                        The last part may be smaller than the others",
                     )
                     .required_unless_present("num_parts")
                     .conflicts_with("num_parts")
@@ -40,6 +41,10 @@ impl RunConfig {
                     .short('n')
                     .long("parts")
                     .about("The number of parts to chop the file into")
+                    .long_about(
+                        "The number of parts to chop the file into. \
+                        Parts will all be roughly the same size",
+                    )
                     .required_unless_present("part_size")
                     .conflicts_with("part_size")
                     .takes_value(true),

@@ -27,10 +27,11 @@ OPTIONS:
             Print help information
 
     -n, --parts <num_parts>
-            The number of parts to chop the file into
+            The number of parts to chop the file into. Parts will all be roughly the same size
 
     -s, --size <part_size>
-            The maximum size each part should be.Accepts units - e.g. 1GB, 20K, 128MiB
+            The maximum size each part should be. Accepts units - e.g. 1GB, 20K, 128MiB. The last
+            part may be smaller than the others
 
     -V, --version
             Print version information
@@ -46,3 +47,4 @@ OPTIONS:
 * Add verbose commandline option
 * Add dry run commandline option
 * And 'unsafe' mode which requires no additional disk space (by truncating before writing)
+* Recovering from mid-way aborted states

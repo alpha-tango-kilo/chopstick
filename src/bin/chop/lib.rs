@@ -1,7 +1,6 @@
 use crate::{ChopError, Result};
 use std::path::{Path, PathBuf};
-
-const EXTENSION_PREFIX: &str = "p";
+use chopstick::EXTENSION_PREFIX;
 
 #[derive(Debug, Copy, Clone)]
 #[cfg_attr(test, derive(Eq, PartialEq))]

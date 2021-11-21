@@ -1,4 +1,7 @@
 use crate::{ChopError, Result};
+use std::path::{Path, PathBuf};
+
+const EXTENSION_PREFIX: &str = "p";
 
 #[derive(Debug, Copy, Clone)]
 #[cfg_attr(test, derive(Eq, PartialEq))]
@@ -29,6 +32,15 @@ impl Split {
             })
         }
     }
+}
+
+pub fn get_part_path_buf<P: AsRef<Path>>(
+    original_path: P,
+    index: u64,
+) -> PathBuf {
+    let mut os_str = original_path.as_ref().as_os_str().to_owned();
+    os_str.push(format!(".{}{}", EXTENSION_PREFIX, index));
+    PathBuf::from(os_str)
 }
 
 pub const fn round_up_div(a: u64, b: u64) -> u64 {

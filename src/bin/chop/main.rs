@@ -3,7 +3,7 @@ pub use error::*;
 pub use lib::*;
 use std::fs::OpenOptions;
 use std::io::{Read, Seek, SeekFrom, Write};
-use std::process;
+use std::{fs, mem, process};
 
 mod args;
 mod error;
@@ -18,7 +18,6 @@ fn main() {
 
 fn _main() -> Result<()> {
     let config = RunConfig::new()?;
-    println!("{:?}", &config);
 
     // Cast is saturating if part_size > usize::MAX
     let mut buffer = Vec::with_capacity(config.split.part_size as usize);
@@ -27,24 +26,45 @@ fn _main() -> Result<()> {
         .write(true)
         .open(&config.path)?;
 
-    let cut_off = config.split.part_size * (config.split.num_parts - 1);
+    // TODO: more explanatory error variants
+    (0..config.split.num_parts)
+        .into_iter()
+        .rev()
+        .map(|part| {
+            (
+                part * config.split.part_size,
+                get_part_path_buf(&config.path, part + 1),
+            )
+        })
+        .try_for_each(|(byte_offset, part_path)| -> Result<()> {
+            // Step 1: Get the source file handle pointed at the right place
+            handle
+                .seek(SeekFrom::Start(byte_offset))
+                .expect("Arithmetic error, seek outside of file");
 
-    // Go to one part from the end
-    handle
-        .seek(SeekFrom::Start(cut_off))
-        .expect("Arithmetic error, seek outside of file");
-    // Read that part
-    handle.read_to_end(&mut buffer)?;
+            // Step 2: Create part file
+            let mut part_file = OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(&part_path)?;
 
-    let part_path = get_part_path_buf(&config.path, config.split.num_parts);
-    // TODO: Specific error variant for file already existing
-    let mut part = OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .open(&part_path)?;
-    part.write_all(&buffer)?;
+            // Step 3: read to end of source file into the buffer
+            handle.read_to_end(&mut buffer)?;
 
-    handle.set_len(cut_off)?;
+            // Step 4: write buffer to part file, then clear buffer
+            part_file.write_all(&buffer)?;
+            buffer.clear();
+
+            // Step 5: truncate source file
+            handle.set_len(byte_offset)?;
+
+            Ok(())
+        })?;
+
+    // Drop isn't strictly necessary but saves me trying to use it on a
+    // soon-to-be deleted file
+    mem::drop(handle);
+    fs::remove_file(&config.path)?;
 
     Ok(())
 }

@@ -30,7 +30,9 @@ impl fmt::Display for ChopError {
         match self {
             Io(why) => write!(f, "IO error: {}", why),
             ByteSize(why) => write!(f, "Error parsing file size: {}", why),
-            PartSizeTooLarge => write!(f, "Part size too large. File wouldn't be split"),
+            PartSizeTooLarge => {
+                write!(f, "Part size too large. File wouldn't be split")
+            }
             NumPartsTooLarge => write!(
                 f,
                 "Number of parts too large. Each part would be less than 1 byte"

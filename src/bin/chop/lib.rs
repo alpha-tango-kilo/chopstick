@@ -11,7 +11,10 @@ pub struct Split {
 }
 
 impl Split {
-    pub const fn from_part_size(file_size: u64, part_size: u64) -> Result<Self> {
+    pub const fn from_part_size(
+        file_size: u64,
+        part_size: u64,
+    ) -> Result<Self> {
         if part_size >= file_size {
             Err(ChopError::PartSizeTooLarge)
         } else {
@@ -22,7 +25,10 @@ impl Split {
         }
     }
 
-    pub const fn from_num_parts(file_size: u64, num_parts: u64) -> Result<Self> {
+    pub const fn from_num_parts(
+        file_size: u64,
+        num_parts: u64,
+    ) -> Result<Self> {
         if num_parts >= file_size {
             Err(ChopError::NumPartsTooLarge)
         } else {
@@ -80,10 +86,10 @@ mod unit_tests {
 
     #[test]
     fn split_from_part_size() {
-        PART_SIZE_DATA
-            .into_iter()
-            .for_each(|(file_size, part_size, num_parts)| {
-                let split = Split::from_part_size(file_size, part_size).expect("Unexpected error");
+        PART_SIZE_DATA.into_iter().for_each(
+            |(file_size, part_size, num_parts)| {
+                let split = Split::from_part_size(file_size, part_size)
+                    .expect("Unexpected error");
                 assert_eq!(
                     split,
                     Split {
@@ -93,7 +99,8 @@ mod unit_tests {
                     "Split calculation mismatch for file size {}",
                     file_size,
                 );
-            });
+            },
+        );
     }
 
     #[test]
@@ -106,10 +113,10 @@ mod unit_tests {
 
     #[test]
     fn split_from_num_parts() {
-        NUM_PARTS_DATA
-            .into_iter()
-            .for_each(|(file_size, num_parts, part_size)| {
-                let split = Split::from_num_parts(file_size, num_parts).expect("Unexpected error");
+        NUM_PARTS_DATA.into_iter().for_each(
+            |(file_size, num_parts, part_size)| {
+                let split = Split::from_num_parts(file_size, num_parts)
+                    .expect("Unexpected error");
                 assert_eq!(
                     split,
                     Split {
@@ -119,7 +126,8 @@ mod unit_tests {
                     "Split calculation mismatch for file size {}",
                     file_size,
                 );
-            });
+            },
+        );
     }
 
     #[test]

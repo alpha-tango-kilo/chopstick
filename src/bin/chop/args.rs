@@ -57,14 +57,19 @@ impl RunConfig {
         let path: PathBuf = clap_matches.value_of_os("file").unwrap().into();
         let file_size = fs::metadata(&path)?.len();
 
-        let split = if let Some(part_size_str) = clap_matches.value_of("part_size") {
+        let split = if let Some(part_size_str) =
+            clap_matches.value_of("part_size")
+        {
             let ByteSize(part_size) = ByteSize::from_str(part_size_str)?;
             Split::from_part_size(file_size, part_size)?
         } else if let Some(num_parts_str) = clap_matches.value_of("num_parts") {
-            let num_parts = num_parts_str.parse().map_err(|_| InvalidNumParts)?;
+            let num_parts =
+                num_parts_str.parse().map_err(|_| InvalidNumParts)?;
             Split::from_num_parts(file_size, num_parts)?
         } else {
-            unreachable!("Either num_parts or part_size should have been specified");
+            unreachable!(
+                "Either num_parts or part_size should have been specified"
+            );
         };
 
         Ok(RunConfig { path, split })
@@ -96,14 +101,24 @@ mod unit_tests {
         // One
         let clap = RunConfig::create_clap_app();
         let matches = clap
-            .try_get_matches_from(vec![env!("CARGO_PKG_NAME"), "-n", "5", "Cargo.toml"])
+            .try_get_matches_from(vec![
+                env!("CARGO_PKG_NAME"),
+                "-n",
+                "5",
+                "Cargo.toml",
+            ])
             .unwrap();
         assert!(matches.is_present("num_parts"));
         assert!(RunConfig::process_matches(&matches).is_ok());
 
         let clap = RunConfig::create_clap_app();
         let matches = clap
-            .try_get_matches_from(vec![env!("CARGO_PKG_NAME"), "-s", "512", "Cargo.toml"])
+            .try_get_matches_from(vec![
+                env!("CARGO_PKG_NAME"),
+                "-s",
+                "512",
+                "Cargo.toml",
+            ])
             .unwrap();
         assert!(matches.is_present("part_size"));
         assert!(RunConfig::process_matches(&matches).is_ok());

@@ -93,6 +93,7 @@ dependencies = [
  "assert_fs",
  "bytesize",
  "clap",
+ "walkdir",
 ]
 
 [[package]]

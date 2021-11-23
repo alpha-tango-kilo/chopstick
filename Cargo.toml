@@ -11,6 +11,7 @@ repository = "https://codeberg.org/alpha-tango-kilo/chopstick"
 
 [dependencies]
 bytesize = "1.1"
+walkdir = "2.3"
 
 [dependencies.clap]
 version = "=3.0.0-beta.5"

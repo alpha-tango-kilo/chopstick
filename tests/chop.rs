@@ -3,6 +3,7 @@ use assert_cmd::Command;
 use assert_fs::prelude::*;
 use assert_fs::TempDir;
 use chopstick::EXTENSION_PREFIX;
+use std::cmp::min;
 
 const FILE_NAME: &str = "split_me";
 const TEST_BYTES: [u8; 100] = [
@@ -33,11 +34,41 @@ fn exact_split() {
 
     (0..5).into_iter().map(|n| (n + 1, n * PART_SIZE)).for_each(
         |(part_no, part_byte_offset)| {
-            let part = temp_dir
-                .child(format!("{}.{}{}", FILE_NAME, EXTENSION_PREFIX, part_no + 1));
+            let child_path =
+                format!("{}.{}{}", FILE_NAME, EXTENSION_PREFIX, part_no);
+            let part = temp_dir.child(&child_path);
             part.assert(
                 &TEST_BYTES[part_byte_offset..part_byte_offset + PART_SIZE],
             );
         },
     );
+}
+
+#[test]
+fn split() {
+    const NUM_PARTS: usize = 4;
+    const PART_SIZE: usize = 33;
+    let temp_dir = TempDir::new().unwrap();
+    let temp_file = temp_dir.child(FILE_NAME);
+    temp_file
+        .write_binary(&TEST_BYTES)
+        .expect("Failed to write test bytes to temp file");
+
+    Command::cargo_bin("chop")
+        .unwrap()
+        .args(&["-s", "33", &temp_file.path().to_string_lossy()])
+        .unwrap()
+        .assert()
+        .success();
+
+    (0..NUM_PARTS)
+        .into_iter()
+        .map(|n| (n + 1, n * PART_SIZE))
+        .for_each(|(part_no, part_byte_offset)| {
+            let child_path =
+                format!("{}.{}{}", FILE_NAME, EXTENSION_PREFIX, part_no);
+            let part = temp_dir.child(&child_path);
+            let end_index = min(TEST_BYTES.len(), part_byte_offset + PART_SIZE);
+            part.assert(&TEST_BYTES[part_byte_offset..end_index]);
+        });
 }

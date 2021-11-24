@@ -9,6 +9,8 @@ use walkdir::WalkDir;
 
 #[derive(Debug)]
 pub struct RunConfig {
+    pub original_file: PathBuf,
+    // Ordered list of parts
     pub part_paths: Vec<PathBuf>,
 }
 
@@ -38,7 +40,7 @@ impl RunConfig {
     }
 
     fn process_matches(clap_matches: &ArgMatches) -> Result<Self> {
-        // Unwrap is assured by "file" being a required argument taking values
+        // Unwrap is assured by "file_name" being a required argument taking values
         let path_ref: &Path =
             clap_matches.value_of_os("file_name").unwrap().as_ref();
         let path = match path_ref.extension() {
@@ -54,15 +56,15 @@ impl RunConfig {
 
         let search_stem = path
             .file_stem()
-            .ok_or_else(|| NotRecognised(path.clone()))?;
+            .ok_or_else(|| NotRecognised(path_ref.to_path_buf()))?;
         let parent_folder =
-            path.parent().ok_or_else(|| NotRecognised(path.clone()))?;
+            path.parent().ok_or_else(|| NotRecognised(path_ref.to_path_buf()))?;
         let ext = path
             .extension()
             .and_then(OsStr::to_str)
-            .ok_or_else(|| NotRecognised(path.clone()))?;
+            .ok_or_else(|| NotRecognised(path_ref.to_path_buf()))?;
         if !ext.starts_with(EXTENSION_PREFIX) {
-            return Err(NotRecognised(path.clone()));
+            return Err(NotRecognised(path_ref.to_path_buf()));
         }
 
         let discovered_paths = WalkDir::new(parent_folder)
@@ -80,7 +82,7 @@ impl RunConfig {
             .filter_map(|e| match e {
                 Ok(de) => Some(de.into_path()),
                 Err(why) => {
-                    let _path = why
+                    let path = why
                         .path()
                         .expect("Read error not associated with a path");
                     // TODO: check this reads nicely
@@ -109,6 +111,7 @@ impl RunConfig {
 
         if we_good {
             Ok(RunConfig {
+                original_file: PathBuf::from(search_stem),
                 part_paths: discovered_paths,
             })
         } else {

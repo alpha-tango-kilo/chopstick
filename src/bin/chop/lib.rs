@@ -1,6 +1,6 @@
 use crate::{ChopError, Result};
-use std::path::{Path, PathBuf};
 use chopstick::EXTENSION_PREFIX;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, Copy, Clone)]
 #[cfg_attr(test, derive(Eq, PartialEq))]
@@ -42,9 +42,10 @@ impl Split {
 pub fn get_part_path_buf<P: AsRef<Path>>(
     original_path: P,
     index: u64,
+    width: usize,
 ) -> PathBuf {
     let mut os_str = original_path.as_ref().as_os_str().to_owned();
-    os_str.push(format!(".{}{}", EXTENSION_PREFIX, index));
+    os_str.push(format!(".{}{:0width$}", EXTENSION_PREFIX, index, width = width));
     PathBuf::from(os_str)
 }
 

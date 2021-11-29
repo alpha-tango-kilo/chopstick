@@ -26,6 +26,7 @@ fn _main() -> Result<()> {
         .read(true)
         .write(true)
         .open(&config.path)?;
+    let zero_pad_width = (config.split.num_parts / 10 + 1) as usize;
 
     (0..config.split.num_parts)
         .into_iter()
@@ -33,7 +34,7 @@ fn _main() -> Result<()> {
         .map(|part| {
             (
                 part * config.split.part_size,
-                get_part_path_buf(&config.path, part + 1),
+                get_part_path_buf(&config.path, part + 1, zero_pad_width),
             )
         })
         .try_for_each(|(byte_offset, part_path)| -> Result<()> {

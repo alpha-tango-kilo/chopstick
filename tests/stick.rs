@@ -28,14 +28,14 @@ const TEST_BYTES: [u8; 100] = [
 ];
 
 #[test]
-fn stick() {
+fn combine() {
     let temp_dir = TempDir::new().unwrap();
     PART_BYTES
         .iter()
         .enumerate()
         .try_for_each(|(part_no, tenple)| {
             let child_path =
-                format!("{}.{}{}", FILE_NAME, EXTENSION_PREFIX, part_no + 1);
+                format!("{}.{}{:0>2}", FILE_NAME, EXTENSION_PREFIX, part_no + 1);
             let part = temp_dir.child(&child_path);
             part.write_binary(tenple)
         })

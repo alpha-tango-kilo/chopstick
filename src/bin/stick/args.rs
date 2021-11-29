@@ -2,8 +2,8 @@ use crate::Result;
 use crate::StickError::*;
 use chopstick::EXTENSION_PREFIX;
 use clap::{AppSettings, Arg, ArgMatches};
+use std::env;
 use std::ffi::OsStr;
-use std::fs;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
@@ -40,44 +40,46 @@ impl RunConfig {
     }
 
     fn process_matches(clap_matches: &ArgMatches) -> Result<Self> {
-        // Unwrap is assured by "file_name" being a required argument taking values
+        // Unwrap is assured by "file_name" being a required argument taking
+        // a value
         let path_ref: &Path =
             clap_matches.value_of_os("file_name").unwrap().as_ref();
-        let path = match path_ref.extension() {
-            Some(_) => fs::canonicalize(path_ref),
-            None => {
-                let mut extensionless = path_ref.as_os_str().to_owned();
-                extensionless.push(".p1");
-                fs::canonicalize(extensionless)
-            }
-        };
-        let path =
-            path.map_err(|err| Canonicalise(path_ref.to_path_buf(), err))?;
 
-        let search_stem = path
+        let search_stem = path_ref
             .file_stem()
             .ok_or_else(|| NotRecognised(path_ref.to_path_buf()))?;
-        let parent_folder =
-            path.parent().ok_or_else(|| NotRecognised(path_ref.to_path_buf()))?;
-        let ext = path
-            .extension()
-            .and_then(OsStr::to_str)
-            .ok_or_else(|| NotRecognised(path_ref.to_path_buf()))?;
-        if !ext.starts_with(EXTENSION_PREFIX) {
-            return Err(NotRecognised(path_ref.to_path_buf()));
-        }
+        // Try and use parent folder from given path, failing that use the
+        // working directory
+        let mut parent_folder = match path_ref
+            .parent()
+            // .parent() can just return an empty string which is annoying
+            .filter(|p| !p.as_os_str().is_empty())
+        {
+            Some(parent) => parent.to_owned(),
+            None => env::current_dir().map_err(BadParent)?,
+        };
 
-        let discovered_paths = WalkDir::new(parent_folder)
+        let discovered_paths = WalkDir::new(&parent_folder)
             .min_depth(1)
             .max_depth(1) // Search same folder
             .follow_links(true)
+            // Zero padding file names in chop means sorting by file name here
+            // lets us get the parts in order, which is useful later for
+            // verifying we have a full run of them
             .sort_by_file_name()
             .into_iter()
             .filter_entry(|e| {
+                // Check file name...
                 e.path()
                     .file_stem()
                     .map(|stem| stem == search_stem)
                     .unwrap_or(false)
+                    // ...and file extension
+                    && e.path()
+                        .extension()
+                        .and_then(OsStr::to_str)
+                        .map(|ext_str| ext_str.starts_with(EXTENSION_PREFIX))
+                        .unwrap_or(false)
             })
             .filter_map(|e| match e {
                 Ok(de) => Some(de.into_path()),
@@ -85,12 +87,7 @@ impl RunConfig {
                     let path = why
                         .path()
                         .expect("Read error not associated with a path");
-                    // TODO: check this reads nicely
-                    eprintln!(
-                        "Failed to read {}: {}",
-                        path.to_string_lossy(),
-                        why
-                    );
+                    eprintln!("Failed to read {:?}: {}", path, why);
                     None
                 }
             })
@@ -101,17 +98,22 @@ impl RunConfig {
         let we_good = discovered_paths
             .iter()
             .enumerate()
-            .map(|(index, path)| (format!("{}", index + 1), path))
+            .map(|(index, path)| ((index + 1).to_string(), path))
             .all(|(index, path)| {
                 path.extension()
                     .and_then(OsStr::to_str)
+                    // ends_with handily ignores the zero padding
                     .map(|ext| ext.ends_with(&index))
                     .unwrap_or(false)
             });
 
         if we_good {
+            // Add file name onto parent folder to reconstruct file into
+            // If we don't use parent_folder here, the file will be recreated
+            // in the working directory, instead of the file's directory
+            parent_folder.push(search_stem);
             Ok(RunConfig {
-                original_file: PathBuf::from(search_stem),
+                original_file: parent_folder,
                 part_paths: discovered_paths,
             })
         } else {

@@ -1,5 +1,5 @@
 use crate::args::RunConfig;
-use crate::StickError::CreateOriginal;
+use crate::StickError::*;
 pub use error::*;
 use std::fs::OpenOptions;
 use std::io::{Read, Write};
@@ -29,8 +29,6 @@ fn _main() -> Result<()> {
         .part_paths
         .iter()
         .try_for_each(|part_path| -> Result<()> {
-            use StickError::*;
-
             // Step 1: read part into memory
             let mut part = OpenOptions::new()
                 .read(true)

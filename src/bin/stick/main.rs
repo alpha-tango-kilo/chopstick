@@ -17,18 +17,17 @@ fn main() {
 
 fn _main() -> Result<()> {
     let config = RunConfig::new()?;
-
-    let mut original_file = OpenOptions::new()
-        .create_new(true)
-        .write(true)
-        .open(&config.original_file)
-        .map_err(|err| CreateOriginal(config.original_file.clone(), err))?;
     let mut buffer = Vec::new();
 
-    config
-        .part_paths
-        .iter()
-        .try_for_each(|part_path| -> Result<()> {
+    fs::rename(&config.part_paths[0], &config.original_file)
+        .map_err(|why| CreateOriginal(config.original_file.clone(), why))?;
+    let mut original_file = OpenOptions::new()
+        .append(true)
+        .open(&config.original_file)
+        .map_err(WriteOriginal)?;
+
+    config.part_paths.iter().skip(1).try_for_each(
+        |part_path| -> Result<()> {
             // Step 1: read part into memory
             let mut part = OpenOptions::new()
                 .read(true)
@@ -48,6 +47,7 @@ fn _main() -> Result<()> {
                 .map_err(|err| DeletePart(part_path.clone(), err))?;
 
             Ok(())
-        })?;
+        },
+    )?;
     Ok(())
 }

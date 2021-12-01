@@ -2,6 +2,7 @@ use assert_cmd::prelude::*;
 use assert_cmd::Command;
 use assert_fs::prelude::*;
 use assert_fs::TempDir;
+use chopstick::EXTENSION_PREFIX;
 use rand::{thread_rng, RngCore};
 use std::fs;
 
@@ -28,7 +29,23 @@ fn combined() {
         .assert()
         .success();
 
-    // TODO: validate successful chop
+    // Check intermediary parts
+    (0..10)
+        .into_iter()
+        .map(|n| (n + 1, n * FIVE_HUNGE_KIB / 10))
+        .for_each(|(part_no, file_bytes_offset)| {
+            let child_path =
+                format!("{}.{}{:0>2}", FILE_NAME, EXTENSION_PREFIX, part_no);
+            let part = temp_dir.child(&child_path);
+            let part_bytes = fs::read(part.path())
+                .expect(&format!("Unable to find/read {:?}", &part.path()));
+            assert_eq!(
+                part_bytes.as_slice(),
+                &file_bytes[file_bytes_offset
+                    ..file_bytes_offset + FIVE_HUNGE_KIB / 10],
+                "File contents differs",
+            );
+        });
 
     // Stick
     Command::cargo_bin("stick")

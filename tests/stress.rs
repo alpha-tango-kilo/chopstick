@@ -2,7 +2,7 @@ use assert_cmd::prelude::*;
 use assert_cmd::Command;
 use assert_fs::prelude::*;
 use assert_fs::TempDir;
-use chopstick::EXTENSION_PREFIX;
+use chopstick::{zero_pad_width, EXTENSION_PREFIX};
 use rand::{thread_rng, Rng, RngCore};
 use std::cmp::min;
 use std::fs;
@@ -27,7 +27,7 @@ fn num_parts() {
     // Round up division wooo
     let part_size =
         FIVE_HUNGE_KIB / num_parts + (FIVE_HUNGE_KIB % num_parts != 0) as usize;
-    let zero_pad = num_parts / 10 + 1;
+    let zero_pad_width = zero_pad_width(num_parts as u64);
 
     // Chop
     Command::cargo_bin("chop")
@@ -51,7 +51,7 @@ fn num_parts() {
                 FILE_NAME,
                 EXTENSION_PREFIX,
                 part_no,
-                width = zero_pad
+                width = zero_pad_width
             );
             let part = temp_dir.child(&child_path);
             let part_bytes = fs::read(part.path())

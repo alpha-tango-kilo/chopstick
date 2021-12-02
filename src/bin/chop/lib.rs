@@ -1,5 +1,5 @@
 use crate::{ChopError, Result};
-use chopstick::EXTENSION_PREFIX;
+use chopstick::{round_up_div, EXTENSION_PREFIX};
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Copy, Clone)]
@@ -54,10 +54,6 @@ pub fn get_part_path_buf<P: AsRef<Path>>(
     PathBuf::from(os_str)
 }
 
-pub const fn round_up_div(a: u64, b: u64) -> u64 {
-    a / b + (a % b != 0) as u64
-}
-
 #[cfg(test)]
 mod unit_tests {
     use super::*;
@@ -77,17 +73,6 @@ mod unit_tests {
         (603, 13, 47),
         (156, 2, 78),
     ];
-
-    #[test]
-    fn round_up_division() {
-        assert_eq!(round_up_div(1, 2), 1);
-        assert_eq!(round_up_div(7, 2), 4);
-        assert_eq!(round_up_div(10, 3), 4);
-        assert_eq!(round_up_div(76, 2), 38);
-        assert_eq!(round_up_div(16, 7), 3);
-        assert_eq!(round_up_div(7, 3), 3);
-        assert_eq!(round_up_div(10, 20), 1);
-    }
 
     #[test]
     fn split_from_part_size() {

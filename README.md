@@ -73,7 +73,7 @@ OPTIONS:
 ### To stable! (v1.0.0)
 
 * Better testing
-* Move to [`pico_args`](https://github.com/RazrFalcon/pico-args) to reduce binary size
+* ~~Move to [`pico_args`](https://github.com/RazrFalcon/pico-args) to reduce binary size~~
 
 ### After v1.0.0
 

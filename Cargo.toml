@@ -25,6 +25,7 @@ features = [
 assert_cmd = "2.0"
 assert_fs = "1.0"
 rand = "0.8"
+rand_pcg = "0.3"
 
 [profile.release]
 lto = true

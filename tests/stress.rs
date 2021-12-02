@@ -4,7 +4,8 @@ use assert_fs::fixture::ChildPath;
 use assert_fs::prelude::*;
 use assert_fs::TempDir;
 use chopstick::{round_up_div, zero_pad_width, EXTENSION_PREFIX};
-use rand::{thread_rng, Rng, RngCore};
+use rand::prelude::*;
+use rand_pcg::Pcg64;
 use std::cmp::min;
 use std::fs;
 use Method::*;
@@ -68,7 +69,10 @@ struct TestScenario<const N: usize> {
 
 impl<const N: usize> TestScenario<N> {
     fn new() -> Self {
-        let mut rng = thread_rng();
+        Self::new_with_rng(&mut thread_rng())
+    }
+
+    fn new_with_rng<R: RngCore>(rng: &mut R) -> Self {
         let temp_dir = TempDir::new().unwrap();
         let original_file = temp_dir.child(FILE_NAME);
         let mut file_bytes = [0u8; N];
@@ -157,6 +161,15 @@ fn num_parts() {
 fn part_size() {
     let test = TestScenario::<FIVE_HUNGE_KIB>::new();
     test.run_with(PartSize(thread_rng().gen_range(10..=50 * 1024)));
+}
+
+#[test]
+#[ignore]
+fn something_specific() {
+    // https://rust-random.github.io/book/guide-seeding.html#a-simple-number
+    let mut fixed_seed = Pcg64::seed_from_u64(14);
+    let test = TestScenario::<FIVE_HUNGE_KIB>::new_with_rng(&mut fixed_seed);
+    test.run_with(NumParts(986));
 }
 
 // TODO: large files, relative directories

@@ -2,11 +2,11 @@ pipeline:
   build:
     image: rust
     commands:
-      - cargo build -v
+      - cargo build
   test:
     image: rust
     commands:
-      - cargo test -v
+      - cargo test
   lint:
     image: rust
     commands:

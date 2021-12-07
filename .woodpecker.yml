@@ -1,0 +1,9 @@
+pipeline:
+  build:
+    image: rust
+    commands:
+      - cargo build -v
+  test:
+    image: rust
+    commands:
+      - cargo test -v

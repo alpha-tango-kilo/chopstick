@@ -7,3 +7,9 @@ pipeline:
     image: rust
     commands:
       - cargo test -v
+  lint:
+    image: rust
+    commands:
+      - rustup component add rustfmt clippy
+      - cargo fmt -- --check --files-with-diff
+      - cargo clippy --no-deps

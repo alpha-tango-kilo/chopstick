@@ -22,7 +22,7 @@ struct Split {
 }
 
 impl Split {
-    const fn from_part_size(file_size: u64, part_size: u64) -> Self {
+    fn from_part_size(file_size: u64, part_size: u64) -> Self {
         if part_size >= file_size {
             panic!("Part size greater than file size")
         } else {
@@ -34,7 +34,7 @@ impl Split {
         }
     }
 
-    const fn from_num_parts(file_size: u64, mut num_parts: u64) -> Self {
+    fn from_num_parts(file_size: u64, mut num_parts: u64) -> Self {
         if num_parts >= file_size {
             panic!("Number of parts greater than file size")
         } else {

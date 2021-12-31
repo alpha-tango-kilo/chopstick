@@ -74,6 +74,7 @@ impl<const N: usize> TestScenario<N> {
 
     fn new_with_rng<R: RngCore>(rng: &mut R) -> Self {
         let temp_dir = TempDir::new().unwrap();
+        println!("Using temp dir {}", temp_dir.to_string_lossy());
         let original_file = temp_dir.child(FILE_NAME);
         let mut file_bytes = [0u8; N];
         rng.fill_bytes(&mut file_bytes);
@@ -90,6 +91,12 @@ impl<const N: usize> TestScenario<N> {
     }
 
     fn run_with(&self, method: Method) {
+        println!(
+            "Chopping {} byte file into {} parts, {}B each",
+            N,
+            method.num_parts(N),
+            method.part_size(N),
+        );
         // Chop
         Command::cargo_bin("chop")
             .unwrap()
@@ -102,8 +109,10 @@ impl<const N: usize> TestScenario<N> {
             .unwrap()
             .assert()
             .success();
+        println!("Ran chop");
 
         // Check intermediary parts
+        let final_part_no = method.num_parts(N);
         (0..method.num_parts(N))
             .into_iter()
             .map(|n| (n + 1, (n * method.part_size(N)) as usize))
@@ -126,10 +135,12 @@ impl<const N: usize> TestScenario<N> {
                 assert_eq!(
                     part_bytes.as_slice(),
                     &self.file_bytes[file_bytes_offset..end_index],
-                    "File contents differs in part {}",
+                    "File contents differs in part {} of {}",
                     part_no,
+                    final_part_no,
                 );
             });
+        println!("All intermediary parts are as expected");
 
         // Stick
         Command::cargo_bin("stick")
@@ -139,10 +150,12 @@ impl<const N: usize> TestScenario<N> {
             .unwrap()
             .assert()
             .success();
+        println!("Ran stick");
 
         // Test
         let reconstructed_bytes = fs::read(self.original_file.path())
             .expect("Unable to find/read reconstructed file");
+        println!("Read reassembled file");
         assert_eq!(
             reconstructed_bytes.as_slice(),
             &self.file_bytes[..],

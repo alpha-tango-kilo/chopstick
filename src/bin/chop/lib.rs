@@ -26,13 +26,18 @@ impl Split {
 
     pub const fn from_num_parts(
         file_size: u64,
-        num_parts: u64,
+        mut num_parts: u64,
     ) -> Result<Self> {
         if num_parts >= file_size {
             Err(ChopError::NumPartsTooLarge)
         } else {
+            let part_size = round_up_div(file_size, num_parts);
+            // In the edge case where the user's choice would result in an
+            // empty part (see test `disobey` below), the rhs will reduce the
+            // number of parts appropriately. Usually will change nothing
+            num_parts -= (num_parts - 1).saturating_sub(file_size / part_size);
             Ok(Split {
-                part_size: round_up_div(file_size, num_parts),
+                part_size,
                 num_parts,
             })
         }
@@ -126,5 +131,17 @@ mod unit_tests {
         assert!(matches!(err, ChopError::NumPartsTooLarge));
         let err = Split::from_num_parts(10, 100).unwrap_err();
         assert!(matches!(err, ChopError::NumPartsTooLarge));
+    }
+
+    #[test]
+    fn disobey() {
+        let split = Split::from_num_parts(512000, 986).unwrap();
+        assert_eq!(
+            split,
+            Split {
+                part_size: 520,
+                num_parts: 985, // OMG we did it, we disobeyed!
+            },
+        );
     }
 }

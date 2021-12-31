@@ -8,55 +8,54 @@ use rand::prelude::*;
 use rand_pcg::Pcg64;
 use std::cmp::min;
 use std::fs;
-use Method::*;
 
 const FILE_NAME: &str = "chopnplop";
 const FIVE_HUNGE_KIB: usize = 500 * 1024;
 //const ONE_HUNGE_MIB: usize = 100 * 1024 * 1024;
 //const FIVE_GIB: u64 = 5 * 1024 * 1024 * 1024;
 
-#[derive(Copy, Clone)]
-enum Method {
-    NumParts(u64),
-    PartSize(u64),
+// Dangerous amounts of code re-use from chop/lib.rs
+struct Split {
+    part_size: u64,
+    num_parts: u64,
+    flag: &'static str,
 }
 
-impl Method {
-    const fn val(self) -> u64 {
-        match self {
-            NumParts(n) | PartSize(n) => n,
+impl Split {
+    const fn from_part_size(file_size: u64, part_size: u64) -> Self {
+        if part_size >= file_size {
+            panic!("Part size greater than file size")
+        } else {
+            Split {
+                part_size,
+                num_parts: round_up_div(file_size, part_size),
+                flag: "-s",
+            }
         }
     }
 
-    const fn flag(&self) -> &str {
-        match self {
-            NumParts(_) => "-n",
-            PartSize(_) => "-s",
+    const fn from_num_parts(file_size: u64, mut num_parts: u64) -> Self {
+        if num_parts >= file_size {
+            panic!("Number of parts greater than file size")
+        } else {
+            let part_size = round_up_div(file_size, num_parts);
+            // In the edge case where the user's choice would result in an
+            // empty part (see test `disobey` below), the rhs will reduce the
+            // number of parts appropriately. Usually will change nothing
+            num_parts -= (num_parts - 1).saturating_sub(file_size / part_size);
+            Split {
+                part_size,
+                num_parts,
+                flag: "-n",
+            }
         }
     }
 
-    const fn num_parts(self, file_size: usize) -> u64 {
-        match self {
-            NumParts(n) => n,
-            PartSize(_) => self.other(file_size),
-        }
-    }
-
-    const fn part_size(self, file_size: usize) -> u64 {
-        match self {
-            NumParts(_) => self.other(file_size),
-            PartSize(n) => n,
-        }
-    }
-
-    const fn other(&self, file_size: usize) -> u64 {
-        round_up_div(file_size as u64, self.val())
-    }
-
-    const fn zero_pad_width(&self, file_size: usize) -> usize {
-        match self {
-            NumParts(n) => zero_pad_width(*n),
-            PartSize(_) => zero_pad_width(self.other(file_size)),
+    fn flag_val(&self) -> u64 {
+        match self.flag {
+            "-s" => self.part_size,
+            "-n" => self.num_parts,
+            _ => unreachable!(),
         }
     }
 }
@@ -90,20 +89,18 @@ impl<const N: usize> TestScenario<N> {
         }
     }
 
-    fn run_with(&self, method: Method) {
+    fn run_with(&self, split: Split) {
         println!(
             "Chopping {} byte file into {} parts, {}B each",
-            N,
-            method.num_parts(N),
-            method.part_size(N),
+            N, split.num_parts, split.part_size,
         );
         // Chop
         Command::cargo_bin("chop")
             .unwrap()
             .args(&[
-                method.flag(),
+                split.flag,
                 // TODO: format as bytes if appropriate
-                &method.val().to_string(),
+                &split.flag_val().to_string(),
                 &self.original_file.path().to_string_lossy(),
             ])
             .unwrap()
@@ -112,17 +109,16 @@ impl<const N: usize> TestScenario<N> {
         println!("Ran chop");
 
         // Check intermediary parts
-        let final_part_no = method.num_parts(N);
-        (0..method.num_parts(N))
+        (0..split.num_parts)
             .into_iter()
-            .map(|n| (n + 1, (n * method.part_size(N)) as usize))
+            .map(|n| (n + 1, (n * split.part_size) as usize))
             .for_each(|(part_no, file_bytes_offset)| {
                 let child_path = format!(
                     "{}.{}{:0>width$}",
                     FILE_NAME,
                     EXTENSION_PREFIX,
                     part_no,
-                    width = method.zero_pad_width(N),
+                    width = zero_pad_width(split.num_parts),
                 );
                 let part = self.temp_dir.child(&child_path);
                 let part_bytes = fs::read(part.path()).unwrap_or_else(|_| {
@@ -130,14 +126,14 @@ impl<const N: usize> TestScenario<N> {
                 });
                 let end_index = min(
                     self.file_bytes.len(),
-                    file_bytes_offset + method.part_size(N) as usize,
+                    file_bytes_offset + split.part_size as usize,
                 );
                 assert_eq!(
                     part_bytes.as_slice(),
                     &self.file_bytes[file_bytes_offset..end_index],
                     "File contents differs in part {} of {}",
                     part_no,
-                    final_part_no,
+                    split.num_parts,
                 );
             });
         println!("All intermediary parts are as expected");
@@ -155,25 +151,31 @@ impl<const N: usize> TestScenario<N> {
         // Test
         let reconstructed_bytes = fs::read(self.original_file.path())
             .expect("Unable to find/read reconstructed file");
-        println!("Read reassembled file");
         assert_eq!(
             reconstructed_bytes.as_slice(),
             &self.file_bytes[..],
             "File contents differs",
         );
+        println!("Reassembled file as expected");
     }
 }
 
 #[test]
 fn num_parts() {
     let test = TestScenario::<FIVE_HUNGE_KIB>::new();
-    test.run_with(NumParts(thread_rng().gen_range(10..=1000)));
+    test.run_with(Split::from_num_parts(
+        FIVE_HUNGE_KIB as u64,
+        thread_rng().gen_range(10..=1000),
+    ));
 }
 
 #[test]
 fn part_size() {
     let test = TestScenario::<FIVE_HUNGE_KIB>::new();
-    test.run_with(PartSize(thread_rng().gen_range(10..=50 * 1024)));
+    test.run_with(Split::from_part_size(
+        FIVE_HUNGE_KIB as u64,
+        thread_rng().gen_range(10..=50 * 1024),
+    ));
 }
 
 #[test]
@@ -182,7 +184,7 @@ fn something_specific() {
     // https://rust-random.github.io/book/guide-seeding.html#a-simple-number
     let mut fixed_seed = Pcg64::seed_from_u64(14);
     let test = TestScenario::<FIVE_HUNGE_KIB>::new_with_rng(&mut fixed_seed);
-    test.run_with(NumParts(986));
+    test.run_with(Split::from_num_parts(FIVE_HUNGE_KIB as u64, 986));
 }
 
 // TODO: large files, relative directories

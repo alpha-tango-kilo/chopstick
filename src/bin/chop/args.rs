@@ -9,6 +9,7 @@ use std::str::FromStr;
 pub struct RunConfig {
     pub path: PathBuf,
     pub split: Split,
+    pub retain: bool,
 }
 
 impl RunConfig {
@@ -46,6 +47,14 @@ impl RunConfig {
                     .takes_value(true),
             )
             .arg(
+                Arg::new("retain")
+                    .short('r')
+                    .long("retain")
+                    .visible_aliases(&["no-delete", "preserve"])
+                    .help("Don't delete the original file")
+                    .long_help("Don't delete the original file (requires more disk space)"),
+            )
+            .arg(
                 Arg::new("file")
                     .help("The file to split")
                     .required(true)
@@ -78,7 +87,13 @@ impl RunConfig {
             );
         };
 
-        Ok(RunConfig { path, split })
+        let retain = clap_matches.is_present("retain");
+
+        Ok(RunConfig {
+            path,
+            split,
+            retain,
+        })
     }
 }
 

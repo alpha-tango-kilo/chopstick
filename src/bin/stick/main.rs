@@ -16,18 +16,31 @@ fn main() {
 }
 
 fn _main() -> Result<()> {
-    let config = RunConfig::new()?;
+    let mut config = RunConfig::new()?;
     let mut buffer = Vec::new();
 
-    fs::rename(&config.part_paths[0], &config.original_file)
-        .map_err(|why| CreateOriginal(config.original_file.clone(), why))?;
-    let mut original_file = OpenOptions::new()
-        .append(true)
-        .open(&config.original_file)
-        .map_err(WriteOriginal)?;
+    let mut original_file = if !config.retain {
+        // Rename first part to the original file and append to it from there
+        // First part is removed from config.part_paths
+        fs::rename(&config.part_paths.remove(0), &config.original_file)
+            .map_err(|why| CreateOriginal(config.original_file.clone(), why))?;
+        OpenOptions::new()
+            .append(true)
+            .open(&config.original_file)
+            .map_err(WriteOriginal)?
+    } else {
+        // Just create a new file to store the original in
+        OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&config.original_file)
+            .map_err(WriteOriginal)?
+    };
 
-    config.part_paths.iter().skip(1).try_for_each(
-        |part_path| -> Result<()> {
+    config
+        .part_paths
+        .iter()
+        .try_for_each(|part_path| -> Result<()> {
             // Step 1: read part into memory
             let mut part = OpenOptions::new()
                 .read(true)
@@ -43,11 +56,12 @@ fn _main() -> Result<()> {
             buffer.clear();
 
             // Step 4: delete part file
-            fs::remove_file(part_path)
-                .map_err(|err| DeletePart(part_path.clone(), err))?;
+            if !config.retain {
+                fs::remove_file(part_path)
+                    .map_err(|err| DeletePart(part_path.clone(), err))?;
+            }
 
             Ok(())
-        },
-    )?;
+        })?;
     Ok(())
 }

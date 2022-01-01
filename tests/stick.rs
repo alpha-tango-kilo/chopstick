@@ -41,3 +41,31 @@ fn combine() {
     let reassembled = temp_dir.child(FILE_NAME);
     reassembled.assert(&TEST_BYTES[..]);
 }
+
+#[test]
+fn retain() {
+    let temp_dir = TempDir::new().unwrap();
+    let mut child_paths = Vec::with_capacity(10);
+    (0..10)
+        .into_iter()
+        .map(|n| (n + 1, &TEST_BYTES[n * 10..n * 10 + 10]))
+        .for_each(|(part_no, slice)| {
+            let child_path =
+                format!("{}.{}{:0>2}", FILE_NAME, EXTENSION_PREFIX, part_no);
+            let part = temp_dir.child(&child_path);
+            part.write_binary(slice).expect("Failed to write part");
+            child_paths.push(part);
+        });
+
+    Command::cargo_bin("stick")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .args(&["-r", FILE_NAME])
+        .unwrap()
+        .assert()
+        .success();
+
+    child_paths.into_iter().for_each(|part| {
+        assert!(part.exists(), "{} not found", part.to_string_lossy())
+    });
+}

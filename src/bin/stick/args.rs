@@ -12,6 +12,7 @@ pub struct RunConfig {
     pub original_file: PathBuf,
     // Ordered list of parts
     pub part_paths: Vec<PathBuf>,
+    pub retain: bool,
 }
 
 impl RunConfig {
@@ -27,6 +28,14 @@ impl RunConfig {
             .about("Reconstruct files from parts efficiently")
             .setting(AppSettings::TrailingVarArg)
             .arg(
+                Arg::new("retain")
+                    .short('r')
+                    .long("retain")
+                    .visible_aliases(&["no-delete", "preserve"])
+                    .help("Don't delete the part files")
+                    .long_help("Don't delete the part files (requires more disk space)"),
+            )
+            .arg(
                 Arg::new("file_name")
                     .help("The file to reconstruct")
                     .long_help(
@@ -41,6 +50,8 @@ impl RunConfig {
     }
 
     fn process_matches(clap_matches: &ArgMatches) -> Result<Self> {
+        let retain = clap_matches.is_present("retain");
+
         // Unwrap is assured by "file_name" being a required argument taking
         // a value
         let path_ref: &Path =
@@ -116,6 +127,7 @@ impl RunConfig {
             Ok(RunConfig {
                 original_file: parent_folder,
                 part_paths: discovered_paths,
+                retain,
             })
         } else {
             // Pretty up format a bit to make life easier for StickError

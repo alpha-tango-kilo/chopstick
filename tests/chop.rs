@@ -72,3 +72,21 @@ fn split() {
             part.assert(&TEST_BYTES[part_byte_offset..end_index]);
         });
 }
+
+#[test]
+fn retain() {
+    let temp_dir = TempDir::new().unwrap();
+    let temp_file = temp_dir.child(FILE_NAME);
+    temp_file
+        .write_binary(&TEST_BYTES)
+        .expect("Failed to write test bytes to temp file");
+
+    Command::cargo_bin("chop")
+        .unwrap()
+        .args(&["-r", "-n", "2", &temp_file.path().to_string_lossy()])
+        .unwrap()
+        .assert()
+        .success();
+
+    temp_file.assert(&TEST_BYTES[..]);
+}

@@ -69,7 +69,9 @@ fn _main() -> Result<()> {
             buffer.clear();
 
             // Step 5: truncate source file
-            handle.set_len(byte_offset).map_err(FailedToTruncate)?;
+            if !config.retain {
+                handle.set_len(byte_offset).map_err(FailedToTruncate)?;
+            }
 
             Ok(())
         })?;
@@ -77,7 +79,9 @@ fn _main() -> Result<()> {
     // Drop isn't strictly necessary but saves me trying to use it on a
     // soon-to-be deleted file
     mem::drop(handle);
-    fs::remove_file(&config.path).map_err(FailedToDeleteOriginal)?;
+    if !config.retain {
+        fs::remove_file(&config.path).map_err(FailedToDeleteOriginal)?;
+    }
 
     Ok(())
 }

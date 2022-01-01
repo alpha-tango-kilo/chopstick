@@ -23,7 +23,7 @@ This makes `chop` suitable for splitting up very large multi-gigabyte files.
 
 ```
 USAGE:
-    chop [OPTIONS] <file>
+    chop [OPTIONS] <--size <part_size>|--parts <num_parts>> <file>
 
 ARGS:
     <file>
@@ -34,7 +34,13 @@ OPTIONS:
             Print help information
 
     -n, --parts <num_parts>
-            The number of parts to chop the file into. Parts will all be roughly the same size
+            The number of parts to chop the file into. Parts will all be the same size (except the       
+            last one potentially)
+
+    -r, --retain
+            Don't delete the original file (requires more disk space)
+
+            [aliases: no-delete, preserve]
 
     -s, --size <part_size>
             The maximum size each part should be. Accepts units - e.g. 1GB, 20K, 128MiB. The last
@@ -56,7 +62,7 @@ Given an error you can end up in a partially completed state, however all of the
 
 ```
 USAGE:
-    stick <file_name>
+    stick [OPTIONS] <file_name>
 
 ARGS:
     <file_name>
@@ -66,6 +72,11 @@ ARGS:
 OPTIONS:
     -h, --help
             Print help information
+
+    -r, --retain
+            Don't delete the part files (requires more disk space)
+
+            [aliases: no-delete, preserve]
 
     -V, --version
             Print version information

@@ -1,6 +1,6 @@
 pub const EXTENSION_PREFIX: &str = "p";
 
-pub const fn zero_pad_width(num: u64) -> usize {
+pub const fn digits(num: u64) -> usize {
     if num < 10 {
         1
     } else if num < 100 {
@@ -24,7 +24,7 @@ pub const fn round_up_div(a: u64, b: u64) -> u64 {
 
 #[cfg(test)]
 mod unit_tests {
-    use crate::round_up_div;
+    use crate::*;
 
     #[test]
     fn round_up_division() {
@@ -35,5 +35,24 @@ mod unit_tests {
         assert_eq!(round_up_div(16, 7), 3);
         assert_eq!(round_up_div(7, 3), 3);
         assert_eq!(round_up_div(10, 20), 1);
+    }
+
+    #[test]
+    fn digit_counting() {
+        let input = vec![
+            (1, 1),
+            (50, 2),
+            (12, 2),
+            (9, 1),
+            (123, 3),
+            (41231, 5),
+            (1234, 4),
+            (123123, 6),
+            (1234567890, 10),
+            (u64::MAX, 20),
+        ];
+        input
+            .into_iter()
+            .for_each(|(n, d)| assert_eq!(digits(n), d));
     }
 }

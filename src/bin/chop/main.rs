@@ -1,6 +1,6 @@
 use crate::ChopError::*;
 use args::RunConfig;
-use chopstick::zero_pad_width;
+use chopstick::digits;
 pub use error::*;
 pub use lib::*;
 use std::fs::OpenOptions;
@@ -27,7 +27,7 @@ fn _main() -> Result<()> {
         .read(true)
         .write(true)
         .open(&config.path)?;
-    let zero_pad_width = zero_pad_width(config.split.num_parts) as usize;
+    let zero_pad_width = digits(config.split.num_parts) as usize;
 
     (0..config.split.num_parts)
         .into_iter()

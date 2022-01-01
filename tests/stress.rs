@@ -3,7 +3,7 @@ use assert_cmd::Command;
 use assert_fs::fixture::ChildPath;
 use assert_fs::prelude::*;
 use assert_fs::TempDir;
-use chopstick::{round_up_div, zero_pad_width, EXTENSION_PREFIX};
+use chopstick::{digits, round_up_div, EXTENSION_PREFIX};
 use rand::prelude::*;
 use rand_pcg::Pcg64;
 use std::cmp::min;
@@ -131,7 +131,7 @@ impl<const N: usize> TestScenario<N> {
                     FILE_NAME,
                     EXTENSION_PREFIX,
                     part_no,
-                    width = zero_pad_width(split.num_parts),
+                    width = digits(split.num_parts),
                 );
                 let part = self.temp_dir.child(&child_path);
                 let part_bytes = fs::read(part.path()).unwrap_or_else(|_| {

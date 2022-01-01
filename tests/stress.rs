@@ -26,29 +26,42 @@ impl Split {
         if part_size >= file_size {
             panic!("Part size greater than file size")
         } else {
+            let (part_size, num_parts) =
+                Split::closest_factors_to(file_size, part_size);
             Split {
                 part_size,
-                num_parts: round_up_div(file_size, part_size),
+                num_parts,
                 flag: "-s",
             }
         }
     }
 
-    fn from_num_parts(file_size: u64, mut num_parts: u64) -> Self {
+    fn from_num_parts(file_size: u64, num_parts: u64) -> Self {
         if num_parts >= file_size {
             panic!("Number of parts greater than file size")
         } else {
-            let part_size = round_up_div(file_size, num_parts);
-            // In the edge case where the user's choice would result in an
-            // empty part (see test `disobey` below), the rhs will reduce the
-            // number of parts appropriately. Usually will change nothing
-            num_parts -= (num_parts - 1).saturating_sub(file_size / part_size);
+            let (num_parts, part_size) =
+                Split::closest_factors_to(file_size, num_parts);
             Split {
                 part_size,
                 num_parts,
                 flag: "-n",
             }
         }
+    }
+
+    const fn closest_factors_to(target: u64, divisor: u64) -> (u64, u64) {
+        let factor_two = round_up_div(target, divisor);
+        /*
+        In the edge case where the user's choice (`divisor`) would result in
+        an empty part (see test `disobey` below), the expression
+        `(divisor - 1).saturating_sub(target / factor_two)`
+        will be >0, thus disregarding their choice to reduce the error in
+        reproducing the `target`
+        */
+        let factor_one =
+            divisor - (divisor - 1).saturating_sub(target / factor_two);
+        (factor_one, factor_two)
     }
 
     fn flag_val(&self) -> u64 {

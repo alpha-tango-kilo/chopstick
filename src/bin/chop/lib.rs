@@ -17,30 +17,43 @@ impl Split {
         if part_size >= file_size {
             Err(ChopError::PartSizeTooLarge)
         } else {
+            let (part_size, num_parts) =
+                Split::closest_factors_to(file_size, part_size);
             Ok(Split {
                 part_size,
-                num_parts: round_up_div(file_size, part_size),
+                num_parts,
             })
         }
     }
 
     pub const fn from_num_parts(
         file_size: u64,
-        mut num_parts: u64,
+        num_parts: u64,
     ) -> Result<Self> {
         if num_parts >= file_size {
             Err(ChopError::NumPartsTooLarge)
         } else {
-            let part_size = round_up_div(file_size, num_parts);
-            // In the edge case where the user's choice would result in an
-            // empty part (see test `disobey` below), the rhs will reduce the
-            // number of parts appropriately. Usually will change nothing
-            num_parts -= (num_parts - 1).saturating_sub(file_size / part_size);
+            let (num_parts, part_size) =
+                Split::closest_factors_to(file_size, num_parts);
             Ok(Split {
                 part_size,
                 num_parts,
             })
         }
+    }
+
+    const fn closest_factors_to(target: u64, divisor: u64) -> (u64, u64) {
+        let factor_two = round_up_div(target, divisor);
+        /*
+        In the edge case where the user's choice (`divisor`) would result in
+        an empty part (see test `disobey` below), the expression
+        `(divisor - 1).saturating_sub(target / factor_two)`
+        will be >0, thus disregarding their choice to reduce the error in
+        reproducing the `target`
+        */
+        let factor_one =
+            divisor - (divisor - 1).saturating_sub(target / factor_two);
+        (factor_one, factor_two)
     }
 }
 
@@ -65,10 +78,10 @@ mod unit_tests {
 
     const PART_SIZE_DATA: [(u64, u64, u64); 5] = [
         (1000, 50, 20),
-        (1024, 50, 21),
+        (1024, 49, 21),
         (12, 5, 3),
-        (603, 50, 13),
-        (156, 99, 2),
+        (603, 47, 13),
+        (156, 79, 2),
     ];
 
     const NUM_PARTS_DATA: [(u64, u64, u64); 5] = [
@@ -83,8 +96,8 @@ mod unit_tests {
     fn split_from_part_size() {
         PART_SIZE_DATA.into_iter().for_each(
             |(file_size, part_size, num_parts)| {
-                let split = Split::from_part_size(file_size, part_size)
-                    .expect("Unexpected error");
+                let split =
+                    Split::from_part_size(file_size, part_size).unwrap();
                 assert_eq!(
                     split,
                     Split {
@@ -134,13 +147,28 @@ mod unit_tests {
     }
 
     #[test]
+    fn closest_factors() {
+        assert_eq!(Split::closest_factors_to(512000, 986), (985, 520));
+        assert_eq!(Split::closest_factors_to(1024, 50), (49, 21));
+    }
+
+    #[test]
     fn disobey() {
         let split = Split::from_num_parts(512000, 986).unwrap();
         assert_eq!(
             split,
             Split {
                 part_size: 520,
-                num_parts: 985, // OMG we did it, we disobeyed!
+                num_parts: 985, // We did it, we disobeyed!
+            },
+        );
+
+        let split = Split::from_part_size(1024, 50).unwrap();
+        assert_eq!(
+            split,
+            Split {
+                part_size: 49, // We did it, we disobeyed!
+                num_parts: 21,
             },
         );
     }

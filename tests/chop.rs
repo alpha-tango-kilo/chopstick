@@ -46,8 +46,8 @@ fn exact_split() {
 
 #[test]
 fn split() {
-    const NUM_PARTS: usize = 4;
-    const PART_SIZE: usize = 33;
+    const NUM_PARTS: usize = 7;
+    const PART_SIZE: usize = 15;
     let temp_dir = TempDir::new().unwrap();
     let temp_file = temp_dir.child(FILE_NAME);
     temp_file
@@ -56,7 +56,7 @@ fn split() {
 
     Command::cargo_bin("chop")
         .unwrap()
-        .args(&["-s", "33", &temp_file.path().to_string_lossy()])
+        .args(&["-s", "15", &temp_file.path().to_string_lossy()])
         .unwrap()
         .assert()
         .success();

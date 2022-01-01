@@ -28,14 +28,15 @@ impl RunConfig {
             .setting(AppSettings::TrailingVarArg)
             .arg(
                 Arg::new("file_name")
-                    .about("The file to reconstruct")
-                    .long_about(
+                    .help("The file to reconstruct")
+                    .long_help(
                         "The file to reconstruct. \
                         You only need to specify one part, providing the \
                         extension is optional",
                     )
                     .required(true)
-                    .takes_value(true),
+                    .takes_value(true)
+                    .allow_invalid_utf8(true),
             )
     }
 

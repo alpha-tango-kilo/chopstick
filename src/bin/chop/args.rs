@@ -1,6 +1,6 @@
 use crate::*;
 use bytesize::ByteSize;
-use clap::{Arg, ArgMatches};
+use clap::{Arg, ArgGroup, ArgMatches};
 use std::fs;
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -26,34 +26,36 @@ impl RunConfig {
                 Arg::new("part_size")
                     .short('s')
                     .long("size")
-                    .about("The maximum size each part should be")
-                    .long_about(
+                    .help("The maximum size each part should be")
+                    .long_help(
                         "The maximum size each part should be. \
                         Accepts units - e.g. 1GB, 20K, 128MiB. \
                         The last part may be smaller than the others",
                     )
-                    .required_unless_present("num_parts")
-                    .conflicts_with("num_parts")
                     .takes_value(true),
             )
             .arg(
                 Arg::new("num_parts")
                     .short('n')
                     .long("parts")
-                    .about("The number of parts to chop the file into")
-                    .long_about(
+                    .help("The number of parts to chop the file into")
+                    .long_help(
                         "The number of parts to chop the file into. \
-                        Parts will all be roughly the same size",
+                        Parts will all be the same size (except the last one potentially)",
                     )
-                    .required_unless_present("part_size")
-                    .conflicts_with("part_size")
                     .takes_value(true),
             )
             .arg(
                 Arg::new("file")
-                    .about("The file to split")
+                    .help("The file to split")
                     .required(true)
-                    .takes_value(true),
+                    .takes_value(true)
+                    .allow_invalid_utf8(true),
+            )
+            .group(
+                ArgGroup::new("require_exactly_one")
+                    .args(&["part_size", "num_parts"])
+                    .required(true),
             )
     }
 

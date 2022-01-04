@@ -17,10 +17,7 @@ walkdir = "2.3"
 [dependencies.clap]
 version = "3.0"
 default-features = false
-features = [
-    "std",
-    "color",
-]
+features = ["std"]
 
 [dev-dependencies]
 assert_cmd = "2.0"

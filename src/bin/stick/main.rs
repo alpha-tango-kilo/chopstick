@@ -3,7 +3,7 @@ use crate::StickError::*;
 pub use error::*;
 use std::fs::OpenOptions;
 use std::io::{Read, Write};
-use std::{fs, process};
+use std::{fs, io, process};
 
 mod args;
 mod error;
@@ -20,6 +20,14 @@ fn _main() -> Result<()> {
     let mut buffer = Vec::new();
 
     let mut original_file = if !config.retain {
+        // Check the original file doesn't already exist, so as not to
+        // overwrite it if it does
+        if config.original_file.exists() {
+            return Err(CreateOriginal(
+                config.original_file.clone(),
+                io::Error::new(io::ErrorKind::AlreadyExists, "The file exists"),
+            ));
+        }
         // Rename first part to the original file and append to it from there
         // First part is removed from config.part_paths
         fs::rename(&config.part_paths.remove(0), &config.original_file)
@@ -34,7 +42,7 @@ fn _main() -> Result<()> {
             .write(true)
             .create_new(true)
             .open(&config.original_file)
-            .map_err(WriteOriginal)?
+            .map_err(|why| CreateOriginal(config.original_file.clone(), why))?
     };
 
     config

@@ -93,6 +93,7 @@ dependencies = [
  "assert_fs",
  "bytesize",
  "clap",
+ "os_str_bytes",
  "rand",
  "rand_pcg",
  "walkdir",

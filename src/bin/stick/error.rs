@@ -8,8 +8,8 @@ pub type Result<T> = std::result::Result<T, StickError>;
 
 #[derive(Debug)]
 pub enum StickError {
-    NotRecognised(PathBuf),
     BadParent(io::Error),
+    NoParts,
     IncompleteParts(Vec<OsString>),
     CreateOriginal(PathBuf, io::Error),
     ReadPart(PathBuf, io::Error),
@@ -20,8 +20,8 @@ pub enum StickError {
 impl StickError {
     pub fn exit_code(&self) -> i32 {
         match self {
-            NotRecognised(_) => 1,
             BadParent(_) => 1,
+            NoParts => 1,
             IncompleteParts(_) => 1,
             CreateOriginal(_, _) => 2,
             ReadPart(_, _) => 2,
@@ -34,8 +34,8 @@ impl StickError {
 impl fmt::Display for StickError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            NotRecognised(path) => write!(f, "Not recognised as a chopstick part: {}", path.to_string_lossy()),
             BadParent(why) => write!(f, "Unable to determine or access parent folder: {}", why),
+            NoParts => write!(f, "No parts were found to stick"),
             IncompleteParts(found) => write!(f, "Couldn't find all the parts to stick, only found the following: {:?}", found),
             CreateOriginal(path, why) => write!(f, "Failed to create file {}: {}", path.to_string_lossy(), why),
             ReadPart(path, why) => write!(f, "Couldn't read part {}: {}", path.to_string_lossy(), why),

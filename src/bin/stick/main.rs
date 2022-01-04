@@ -30,19 +30,36 @@ fn _main() -> Result<()> {
         }
         // Rename first part to the original file and append to it from there
         // First part is removed from config.part_paths
-        fs::rename(&config.part_paths.remove(0), &config.original_file)
+        let first_part = config.part_paths.remove(0);
+        fs::rename(&first_part, &config.original_file)
             .map_err(|why| CreateOriginal(config.original_file.clone(), why))?;
+
+        if config.verbose {
+            eprintln!(
+                "Renamed {} to {}",
+                first_part.to_string_lossy(),
+                config.original_file.to_string_lossy(),
+            );
+        }
+
         OpenOptions::new()
             .append(true)
             .open(&config.original_file)
             .map_err(WriteOriginal)?
     } else {
         // Just create a new file to store the original in
-        OpenOptions::new()
+        let of = OpenOptions::new()
             .write(true)
             .create_new(true)
             .open(&config.original_file)
-            .map_err(|why| CreateOriginal(config.original_file.clone(), why))?
+            .map_err(|why| CreateOriginal(config.original_file.clone(), why))?;
+        if config.verbose {
+            eprintln!(
+                "Created empty file {}",
+                config.original_file.to_string_lossy()
+            );
+        }
+        of
     };
 
     config
@@ -57,8 +74,16 @@ fn _main() -> Result<()> {
             part.read_to_end(&mut buffer)
                 .map_err(|err| ReadPart(part_path.clone(), err))?;
 
+            if config.verbose {
+                eprintln!("Read {} into buffer", part_path.to_string_lossy());
+            }
+
             // Step 2: write buffer to original file
             original_file.write_all(&buffer).map_err(WriteOriginal)?;
+
+            if config.verbose {
+                eprintln!("Appended buffer to original file");
+            }
 
             // Step 3: clear buffer
             buffer.clear();
@@ -67,9 +92,18 @@ fn _main() -> Result<()> {
             if !config.retain {
                 fs::remove_file(part_path)
                     .map_err(|err| DeletePart(part_path.clone(), err))?;
+
+                if config.verbose {
+                    eprintln!("Deleted {}", part_path.to_string_lossy())
+                }
             }
 
             Ok(())
         })?;
+
+    if config.verbose {
+        eprintln!("Finished without error!");
+    }
+
     Ok(())
 }

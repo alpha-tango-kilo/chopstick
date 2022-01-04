@@ -10,6 +10,7 @@ pub struct RunConfig {
     pub path: PathBuf,
     pub split: Split,
     pub retain: bool,
+    pub verbose: bool,
 }
 
 impl RunConfig {
@@ -55,6 +56,12 @@ impl RunConfig {
                     .long_help("Don't delete the original file (requires more disk space)"),
             )
             .arg(
+                Arg::new("verbose")
+                    .short('v')
+                    .long("verbose")
+                    .help("Makes chop tell you what it's doing"),
+            )
+            .arg(
                 Arg::new("file")
                     .help("The file to split")
                     .required(true)
@@ -88,11 +95,13 @@ impl RunConfig {
         };
 
         let retain = clap_matches.is_present("retain");
+        let verbose = clap_matches.is_present("verbose");
 
         Ok(RunConfig {
             path,
             split,
             retain,
+            verbose,
         })
     }
 }

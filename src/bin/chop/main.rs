@@ -29,6 +29,10 @@ fn _main() -> Result<()> {
         .open(&config.path)?;
     let zero_pad_width = digits(config.split.num_parts) as usize;
 
+    if config.verbose {
+        eprintln!("File opened and buffer created");
+    }
+
     (0..config.split.num_parts)
         .into_iter()
         .rev()
@@ -59,8 +63,19 @@ fn _main() -> Result<()> {
                     }
                 })?;
 
+            if config.verbose {
+                eprintln!(
+                    "Created part file {}",
+                    part_path.file_name().unwrap().to_string_lossy()
+                );
+            }
+
             // Step 3: read to end of source file into the buffer
             handle.read_to_end(&mut buffer).map_err(FailedToReadPart)?;
+
+            if config.verbose {
+                eprintln!("Read {} bytes into buffer", buffer.len());
+            }
 
             // Step 4: write buffer to part file, then clear buffer
             part_file
@@ -68,9 +83,17 @@ fn _main() -> Result<()> {
                 .map_err(|err| FailedToWritePart(part_path.clone(), err))?;
             buffer.clear();
 
+            if config.verbose {
+                eprintln!("Wrote buffer to part file");
+            }
+
             // Step 5: truncate source file
             if !config.retain {
                 handle.set_len(byte_offset).map_err(FailedToTruncate)?;
+
+                if config.verbose {
+                    eprintln!("Truncated original file");
+                }
             }
 
             Ok(())
@@ -81,6 +104,14 @@ fn _main() -> Result<()> {
     mem::drop(handle);
     if !config.retain {
         fs::remove_file(&config.path).map_err(FailedToDeleteOriginal)?;
+
+        if config.verbose {
+            eprintln!("Deleted original file");
+        }
+    }
+
+    if config.verbose {
+        eprintln!("Finished without error!");
     }
 
     Ok(())

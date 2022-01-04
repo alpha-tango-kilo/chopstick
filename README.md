@@ -46,6 +46,9 @@ OPTIONS:
             The maximum size each part should be. Accepts units - e.g. 1GB, 20K, 128MiB. The last
             part may be smaller than the others
 
+    -v, --verbose
+            Makes chop tell you what it's doing
+
     -V, --version
             Print version information
 ```
@@ -77,6 +80,9 @@ OPTIONS:
             Don't delete the part files (requires more disk space)
 
             [aliases: no-delete, preserve]
+
+    -v, --verbose
+            Makes stick tell you what it's doing
 
     -V, --version
             Print version information

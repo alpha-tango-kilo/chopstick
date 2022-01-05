@@ -129,7 +129,7 @@ fn _main() -> Result<()> {
 }
 
 // TODO: test
-fn total_part_size<P: AsRef<Path>>(paths: &[P]) -> std::result::Result<u64, io::Error> {
+fn total_part_size<P: AsRef<Path>>(paths: &[P]) -> Result<u64, io::Error> {
     // All parts are the same size but the last one, so just multiply the size
     // of the first part by paths.len() - 1, then add the size of the last part
     debug_assert!(paths.len() >= 2);

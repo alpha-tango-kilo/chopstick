@@ -2,7 +2,7 @@ use std::error::Error;
 use std::path::PathBuf;
 use std::{fmt, io};
 
-pub type Result<T> = std::result::Result<T, ChopError>;
+pub type Result<T, E = ChopError> = std::result::Result<T, E>;
 
 #[derive(Debug)]
 pub enum ChopError {

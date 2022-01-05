@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use std::{fmt, io};
 use StickError::*;
 
-pub type Result<T> = std::result::Result<T, StickError>;
+pub type Result<T, E = StickError> = std::result::Result<T, E>;
 
 #[derive(Debug)]
 pub enum StickError {

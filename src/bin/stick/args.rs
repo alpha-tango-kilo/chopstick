@@ -82,9 +82,9 @@ impl RunConfig {
 
         if discovered_paths.is_empty() {
             Err(NoParts)
-        // Check extensions indicate a complete set of parts
-        // i.e. .p1, .p2, .p3 instead of .p2, .p4, .p5
-        } else if verify_discovered_parts(&discovered_paths) {
+        } else if discovered_paths.len() > 1
+            && verify_discovered_parts(&discovered_paths)
+        {
             // Add file name onto parent folder to reconstruct file into
             // If we don't use parent_folder here, the file will be recreated
             // in the working directory, instead of the file's directory
@@ -112,7 +112,7 @@ fn find_parts_in<P: AsRef<Path>>(root: P, search_stem: &OsStr) -> Vec<PathBuf> {
         .max_depth(1) // Search same folder
         .follow_links(true)
         // Zero padding file names in chop means sorting by file name here
-        // lets us get the parts in order, which is useful later for
+        // lets us get the parts in numerical order, which is useful later for
         // verifying we have a full run of them
         .sort_by_file_name()
         .into_iter()
@@ -140,6 +140,8 @@ fn find_parts_in<P: AsRef<Path>>(root: P, search_stem: &OsStr) -> Vec<PathBuf> {
         .collect()
 }
 
+// Check extensions indicate a complete set of parts
+// i.e. .p1, .p2, .p3 instead of .p2, .p4, .p5
 fn verify_discovered_parts(part_paths: &[PathBuf]) -> bool {
     part_paths
         .iter()

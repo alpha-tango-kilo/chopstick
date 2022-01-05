@@ -128,13 +128,15 @@ fn _main() -> Result<()> {
     Ok(())
 }
 
+// TODO: test
 fn total_part_size<P: AsRef<Path>>(paths: &[P]) -> Option<u64> {
-    let mut total = 0;
-    for path in paths.iter() {
-        match fs::metadata(path) {
-            Ok(md) => total += md.len(),
-            Err(_) => return None,
-        }
+    // All parts are the same size but the last one, so just multiply the size
+    // of the first part by paths.len() - 1, then add the size of the last part
+    debug_assert!(paths.len() >= 2);
+    let first = fs::metadata(&paths[0]).map(|md| md.len()).ok();
+    let last = fs::metadata(paths.last().unwrap()).map(|md| md.len()).ok();
+    match (first, last) {
+        (Some(a), Some(b)) => Some(a * (paths.len() as u64 - 1) + b),
+        _ => None,
     }
-    Some(total)
 }

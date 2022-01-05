@@ -1,6 +1,6 @@
 use crate::ChopError::*;
 use args::RunConfig;
-use chopstick::digits;
+use chopstick::{digits, sufficient_disk_space};
 pub use error::*;
 pub use lib::*;
 use std::fs::OpenOptions;
@@ -20,6 +20,22 @@ fn main() {
 
 fn _main() -> Result<()> {
     let config = RunConfig::new()?;
+
+    // Check if there is sufficient disk space available
+    let space_needed = if !config.retain {
+        config.split.part_size
+    } else {
+        fs::metadata(&config.path)?.len()
+    };
+    match sufficient_disk_space(&config.path, space_needed) {
+        Ok(true) => {
+            if config.verbose {
+                eprintln!("Enough disk space available for operation");
+            }
+        }
+        Ok(false) => return Err(InsufficientDiskSpace),
+        Err(warn) => eprintln!("WARNING: {}", warn),
+    }
 
     // Cast is saturating if part_size > usize::MAX
     let mut buffer = Vec::with_capacity(config.split.part_size as usize);

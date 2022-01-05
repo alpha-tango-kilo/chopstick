@@ -1,3 +1,6 @@
+use std::path::Path;
+use sysinfo::{DiskExt, System, SystemExt};
+
 pub const EXTENSION_PREFIX: &str = "p";
 
 pub const fn digits(num: u64) -> usize {
@@ -20,6 +23,29 @@ pub const fn digits(num: u64) -> usize {
 
 pub const fn round_up_div(a: u64, b: u64) -> u64 {
     a / b + (a % b != 0) as u64
+}
+
+//noinspection RsRedundantElse
+pub fn sufficient_disk_space(
+    directory: &Path,
+    space_needed: u64,
+) -> Result<bool, &'static str> {
+    eprintln!(
+        "Working directory given to sufficient_disk_space: {:?}",
+        directory
+    );
+    if System::IS_SUPPORTED {
+        let mut system = System::new();
+        system.refresh_disks();
+        system
+            .disks()
+            .iter()
+            .find(|disk| directory.starts_with(disk.mount_point()))
+            .map(|disk| disk.available_space() > space_needed)
+            .ok_or("unable to determine disk being used to check space")
+    } else {
+        Err("unable to check if there is enough free disk space for this operation")
+    }
 }
 
 #[cfg(test)]

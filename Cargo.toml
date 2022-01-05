@@ -19,6 +19,10 @@ version = "3.0"
 default-features = false
 features = ["std"]
 
+[dependencies.sysinfo]
+version = "0.22"
+default-features = false
+
 [dev-dependencies]
 assert_cmd = "2.0"
 assert_fs = "1.0"

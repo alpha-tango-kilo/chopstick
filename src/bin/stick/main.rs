@@ -1,8 +1,10 @@
 use crate::args::RunConfig;
 use crate::StickError::*;
+use chopstick::sufficient_disk_space;
 pub use error::*;
 use std::fs::OpenOptions;
 use std::io::{Read, Write};
+use std::path::Path;
 use std::{fs, io, process};
 
 mod args;
@@ -18,6 +20,24 @@ fn main() {
 fn _main() -> Result<()> {
     let mut config = RunConfig::new()?;
     let mut buffer = Vec::new();
+
+    // Disk space check (only applies for retain)
+    if config.retain {
+        match total_part_size(&config.part_paths) {
+            Some(required_space) => {
+                match sufficient_disk_space(&config.original_file, required_space) {
+                    Ok(true) => {
+                        if config.verbose {
+                            eprintln!("Enough disk space available for operation");
+                        }
+                    }
+                    Ok(false) => return Err(InsufficientDiskSpace),
+                    Err(warn) => eprintln!("WARNING: {}", warn),
+                }
+            }
+            None => eprintln!("WARNING: unable to check part file sizes to check if space is available"),
+        }
+    }
 
     let mut original_file = if !config.retain {
         // Check the original file doesn't already exist, so as not to
@@ -106,4 +126,15 @@ fn _main() -> Result<()> {
     }
 
     Ok(())
+}
+
+fn total_part_size<P: AsRef<Path>>(paths: &[P]) -> Option<u64> {
+    let mut total = 0;
+    for path in paths.iter() {
+        match fs::metadata(path) {
+            Ok(md) => total += md.len(),
+            Err(_) => return None,
+        }
+    }
+    Some(total)
 }

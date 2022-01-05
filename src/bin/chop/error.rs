@@ -11,6 +11,7 @@ pub enum ChopError {
     PartSizeTooLarge,
     NumPartsTooLarge,
     InvalidNumParts,
+    InsufficientDiskSpace,
     PartFileAlreadyExists(PathBuf),
     FailedToReadPart(io::Error),
     FailedToWritePart(PathBuf, io::Error),
@@ -27,6 +28,7 @@ impl ChopError {
             PartSizeTooLarge => 1,
             NumPartsTooLarge => 1,
             InvalidNumParts => 1,
+            InsufficientDiskSpace => 1,
             PartFileAlreadyExists(_) => 1,
             FailedToReadPart(_) => 2,
             FailedToWritePart(_, _) => 2,
@@ -50,6 +52,9 @@ impl fmt::Display for ChopError {
                 "Number of parts too large. Each part would be less than 1 byte"
             ),
             InvalidNumParts => write!(f, "Failed to parse number of parts"),
+            InsufficientDiskSpace => {
+                write!(f, "Insufficient disk space to perform operation")
+            }
             PartFileAlreadyExists(path) => write!(
                 f,
                 "Part file already exists at {}",

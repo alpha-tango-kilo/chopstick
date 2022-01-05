@@ -24,7 +24,7 @@ fn _main() -> Result<()> {
     // Disk space check (only applies for retain)
     if config.retain {
         match total_part_size(&config.part_paths) {
-            Some(required_space) => {
+            Ok(required_space) => {
                 match sufficient_disk_space(&config.original_file, required_space) {
                     Ok(true) => {
                         if config.verbose {
@@ -35,7 +35,7 @@ fn _main() -> Result<()> {
                     Err(warn) => eprintln!("WARNING: {}", warn),
                 }
             }
-            None => eprintln!("WARNING: unable to check part file sizes to check if space is available"),
+            Err(why) => eprintln!("WARNING: unable to read part file sizes to check if space is available ({})", why),
         }
     }
 
@@ -129,14 +129,11 @@ fn _main() -> Result<()> {
 }
 
 // TODO: test
-fn total_part_size<P: AsRef<Path>>(paths: &[P]) -> Option<u64> {
+fn total_part_size<P: AsRef<Path>>(paths: &[P]) -> std::result::Result<u64, io::Error> {
     // All parts are the same size but the last one, so just multiply the size
     // of the first part by paths.len() - 1, then add the size of the last part
     debug_assert!(paths.len() >= 2);
-    let first = fs::metadata(&paths[0]).map(|md| md.len()).ok();
-    let last = fs::metadata(paths.last().unwrap()).map(|md| md.len()).ok();
-    match (first, last) {
-        (Some(a), Some(b)) => Some(a * (paths.len() as u64 - 1) + b),
-        _ => None,
-    }
+    let first = fs::metadata(&paths[0])?.len();
+    let last = fs::metadata(paths.last().unwrap())?.len();
+    Ok(first * (paths.len() as u64 - 1) + last)
 }

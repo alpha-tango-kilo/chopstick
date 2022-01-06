@@ -30,19 +30,26 @@ pub fn sufficient_disk_space(
     directory: &Path,
     space_needed: u64,
 ) -> Result<bool, &'static str> {
-    eprintln!(
-        "Working directory given to sufficient_disk_space: {:?}",
-        directory
-    );
     if System::IS_SUPPORTED {
+        let directory = directory
+            .canonicalize()
+            .map_err(|_| "couldn't canonicalise file path")?;
+        let mut err = "unable to determine disk being used to check space";
         let mut system = System::new();
-        system.refresh_disks();
+        system.refresh_disks_list();
+
         system
             .disks()
             .iter()
-            .find(|disk| directory.starts_with(disk.mount_point()))
+            .find(|disk| match disk.mount_point().canonicalize() {
+                Ok(disk_path) => directory.starts_with(&disk_path),
+                Err(_) => {
+                    err = "unable to check space in appropriate disk";
+                    false
+                }
+            })
             .map(|disk| disk.available_space() > space_needed)
-            .ok_or("unable to determine disk being used to check space")
+            .ok_or(err)
     } else {
         Err("unable to check if there is enough free disk space for this operation")
     }

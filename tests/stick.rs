@@ -3,6 +3,7 @@ use assert_cmd::Command;
 use assert_fs::prelude::*;
 use assert_fs::TempDir;
 use chopstick::EXTENSION_PREFIX;
+use walkdir::WalkDir;
 
 const FILE_NAME: &str = "stick_me";
 const TEST_BYTES: [u8; 100] = [
@@ -96,4 +97,37 @@ fn dont_overwrite() {
         .assert()
         .failure()
         .code(2);
+}
+
+#[test]
+fn dry_run() {
+    let temp_dir = TempDir::new().unwrap();
+    let mut child_paths = Vec::with_capacity(10);
+    (0..10)
+        .into_iter()
+        .map(|n| (n + 1, &TEST_BYTES[n * 10..n * 10 + 10]))
+        .for_each(|(part_no, slice)| {
+            let child_path =
+                format!("{}.{}{:0>2}", FILE_NAME, EXTENSION_PREFIX, part_no);
+            let part = temp_dir.child(&child_path);
+            part.write_binary(slice).expect("Failed to write part");
+            child_paths.push((part, slice));
+        });
+
+    let num_files = WalkDir::new(&temp_dir)
+        .follow_links(true)
+        .min_depth(1)
+        .into_iter()
+        //.map(|foo| { println!("{:?}", &foo); foo })
+        .count();
+
+    assert_eq!(
+        num_files,
+        child_paths.len(),
+        "Should have only been {} files",
+        child_paths.len()
+    );
+    child_paths.into_iter().for_each(|(cp, bytes)| {
+        cp.assert(bytes);
+    });
 }

@@ -4,6 +4,7 @@ use assert_fs::prelude::*;
 use assert_fs::TempDir;
 use chopstick::EXTENSION_PREFIX;
 use std::cmp::min;
+use walkdir::WalkDir;
 
 const FILE_NAME: &str = "split_me";
 const TEST_BYTES: [u8; 100] = [
@@ -88,5 +89,30 @@ fn retain() {
         .assert()
         .success();
 
+    temp_file.assert(&TEST_BYTES[..]);
+}
+
+#[test]
+fn dry_run() {
+    let temp_dir = TempDir::new().unwrap();
+    let temp_file = temp_dir.child(FILE_NAME);
+    temp_file
+        .write_binary(&TEST_BYTES)
+        .expect("Failed to write test bytes to temp file");
+
+    Command::cargo_bin("chop")
+        .unwrap()
+        .args(&["--dry-run", "-n", "2", &temp_file.path().to_string_lossy()])
+        .unwrap()
+        .assert()
+        .success();
+
+    let num_files = WalkDir::new(&temp_dir)
+        .follow_links(true)
+        .min_depth(1)
+        .into_iter()
+        //.map(|foo| { println!("{:?}", &foo); foo })
+        .count();
+    assert_eq!(num_files, 1, "Should have only been 1 file");
     temp_file.assert(&TEST_BYTES[..]);
 }

@@ -11,6 +11,7 @@ pub struct RunConfig {
     pub split: Split,
     pub retain: bool,
     pub verbose: bool,
+    pub dry_run: bool,
 }
 
 impl RunConfig {
@@ -62,6 +63,13 @@ impl RunConfig {
                     .help("Makes chop tell you what it's doing"),
             )
             .arg(
+                Arg::new("dry-run")
+                    .long("dry-run")
+                    .visible_alias("dry")
+                    .help("Don't actually do anything, just tell me about it")
+                    .long_help("Don't actually do anything, just tell me about it (implies --verbose)"),
+            )
+            .arg(
                 Arg::new("file")
                     .help("The file to split")
                     .required(true)
@@ -95,13 +103,15 @@ impl RunConfig {
         };
 
         let retain = clap_matches.is_present("retain");
-        let verbose = clap_matches.is_present("verbose");
+        let dry_run = clap_matches.is_present("dry-run");
+        let verbose = dry_run || clap_matches.is_present("verbose");
 
         Ok(RunConfig {
             path,
             split,
             retain,
             verbose,
+            dry_run,
         })
     }
 }

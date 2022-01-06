@@ -30,6 +30,11 @@ ARGS:
             The file to split
 
 OPTIONS:
+    --dry-run
+        Don't actually do anything, just tell me about it (implies verbose)
+
+        [aliases: dry]
+
     -h, --help
             Print help information
 
@@ -73,6 +78,11 @@ ARGS:
             optional
 
 OPTIONS:
+    --dry-run
+        Don't actually do anything, just tell me about it (implies verbose)
+
+        [aliases: dry]
+
     -h, --help
             Print help information
 

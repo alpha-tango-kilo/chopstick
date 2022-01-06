@@ -15,6 +15,7 @@ pub struct RunConfig {
     pub part_paths: Vec<PathBuf>,
     pub retain: bool,
     pub verbose: bool,
+    pub dry_run: bool,
 }
 
 impl RunConfig {
@@ -44,6 +45,13 @@ impl RunConfig {
                     .help("Makes stick tell you what it's doing"),
             )
             .arg(
+                Arg::new("dry-run")
+                    .long("dry-run")
+                    .visible_alias("dry")
+                    .help("Don't actually do anything, just tell me about it")
+                    .long_help("Don't actually do anything, just tell me about it (implies --verbose)"),
+            )
+            .arg(
                 Arg::new("file_name")
                     .help("The file to reconstruct")
                     .long_help(
@@ -59,7 +67,8 @@ impl RunConfig {
 
     fn process_matches(clap_matches: &ArgMatches) -> Result<Self> {
         let retain = clap_matches.is_present("retain");
-        let verbose = clap_matches.is_present("verbose");
+        let dry_run = clap_matches.is_present("dry-run");
+        let verbose = dry_run || clap_matches.is_present("verbose");
 
         // Unwrap is assured by "file_name" being a required argument taking
         // a value
@@ -94,6 +103,7 @@ impl RunConfig {
                 part_paths: discovered_paths,
                 retain,
                 verbose,
+                dry_run,
             })
         } else {
             // Pretty up format a bit to make life easier for StickError

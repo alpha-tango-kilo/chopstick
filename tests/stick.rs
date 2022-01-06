@@ -69,3 +69,31 @@ fn retain() {
         assert!(part.exists(), "{} not found", part.to_string_lossy())
     });
 }
+
+#[test]
+fn dont_overwrite() {
+    let temp_dir = TempDir::new().unwrap();
+    (0..10)
+        .into_iter()
+        .map(|n| (n + 1, &TEST_BYTES[n * 10..n * 10 + 10]))
+        .try_for_each(|(part_no, slice)| {
+            let child_path =
+                format!("{}.{}{:0>2}", FILE_NAME, EXTENSION_PREFIX, part_no);
+            println!("Part {}, bytes {:?}", part_no, slice);
+            let part = temp_dir.child(&child_path);
+            part.write_binary(slice)
+        })
+        .expect("Failed to setup test: writing temp file");
+    temp_dir
+        .child(FILE_NAME)
+        .write_binary(&TEST_BYTES[..])
+        .expect("Failed to setup test: writing temp file");
+
+    Command::cargo_bin("stick")
+        .unwrap()
+        .current_dir(&temp_dir)
+        .arg(FILE_NAME)
+        .assert()
+        .failure()
+        .code(2);
+}

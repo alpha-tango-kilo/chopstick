@@ -3,6 +3,7 @@ use assert_cmd::Command;
 use assert_fs::fixture::ChildPath;
 use assert_fs::prelude::*;
 use assert_fs::TempDir;
+use bytesize::ByteSize;
 use chopstick::{digits, round_up_div, EXTENSION_PREFIX};
 use rand::prelude::*;
 use rand_pcg::Pcg64;
@@ -64,10 +65,10 @@ impl Split {
         (factor_one, factor_two)
     }
 
-    fn flag_val(&self) -> u64 {
+    fn flag_val(&self) -> String {
         match self.flag {
-            "-s" => self.part_size,
-            "-n" => self.num_parts,
+            "-s" => ByteSize(self.part_size).to_string(),
+            "-n" => self.num_parts.to_string(),
             _ => unreachable!(),
         }
     }
@@ -93,7 +94,6 @@ impl<const N: usize> TestScenario<N> {
         original_file
             .write_binary(&file_bytes)
             .expect("Failed to write test bytes to temp file");
-        assert!(N > 1000, "N must be over 1000");
 
         TestScenario {
             temp_dir,
@@ -112,8 +112,7 @@ impl<const N: usize> TestScenario<N> {
             .unwrap()
             .args(&[
                 split.flag,
-                // TODO: format as bytes if appropriate
-                &split.flag_val().to_string(),
+                &split.flag_val(),
                 &self.original_file.path().to_string_lossy(),
             ])
             .unwrap()

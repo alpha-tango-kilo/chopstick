@@ -63,12 +63,7 @@ pub fn get_part_path_buf<P: AsRef<Path>>(
     width: usize,
 ) -> PathBuf {
     let mut os_str = original_path.as_ref().as_os_str().to_owned();
-    os_str.push(format!(
-        ".{}{:0width$}",
-        EXTENSION_PREFIX,
-        index,
-        width = width
-    ));
+    os_str.push(format!(".{}{:0width$}", EXTENSION_PREFIX, index));
     PathBuf::from(os_str)
 }
 

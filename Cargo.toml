@@ -4,6 +4,7 @@ description = "A commandline file slicing and unslicing utility"
 categories = ["command-line-utilities"]
 version = "0.2.4"
 edition = "2021"
+rust-version = "1.58"
 readme = "README.md"
 license = "GPL-3.0-only"
 homepage = "https://codeberg.org/alpha-tango-kilo/chopstick"

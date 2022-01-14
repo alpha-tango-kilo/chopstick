@@ -35,8 +35,7 @@ fn exact_split() {
 
     (0..5).into_iter().map(|n| (n + 1, n * PART_SIZE)).for_each(
         |(part_no, part_byte_offset)| {
-            let child_path =
-                format!("{}.{}{}", FILE_NAME, EXTENSION_PREFIX, part_no);
+            let child_path = format!("{FILE_NAME}.{EXTENSION_PREFIX}{part_no}");
             let part = temp_dir.child(&child_path);
             part.assert(
                 &TEST_BYTES[part_byte_offset..part_byte_offset + PART_SIZE],
@@ -66,8 +65,7 @@ fn split() {
         .into_iter()
         .map(|n| (n + 1, n * PART_SIZE))
         .for_each(|(part_no, part_byte_offset)| {
-            let child_path =
-                format!("{}.{}{}", FILE_NAME, EXTENSION_PREFIX, part_no);
+            let child_path = format!("{FILE_NAME}.{EXTENSION_PREFIX}{part_no}");
             let part = temp_dir.child(&child_path);
             let end_index = min(TEST_BYTES.len(), part_byte_offset + PART_SIZE);
             part.assert(&TEST_BYTES[part_byte_offset..end_index]);

@@ -104,8 +104,8 @@ impl<const N: usize> TestScenario<N> {
 
     fn run_with(&self, split: Split) {
         println!(
-            "Chopping {} byte file into {} parts, {}B each",
-            N, split.num_parts, split.part_size,
+            "Chopping {N} byte file into {} parts, {}B each",
+            split.num_parts, split.part_size,
         );
         // Chop
         Command::cargo_bin("chop")

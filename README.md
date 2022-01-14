@@ -2,6 +2,7 @@
 
 [![Codeberg CI](https://ci.codeberg.org/api/badges/alpha-tango-kilo/chopstick/status.svg)](https://ci.codeberg.org/alpha-tango-kilo/chopstick)
 [![Crates.io](https://img.shields.io/crates/v/chopstick.svg)](https://crates.io/crates/chopstick)
+[![Dependencies](https://deps.rs/repo/github/alpha-tango-kilo/chopstick/status.svg)](https://deps.rs/repo/github/alpha-tango-kilo/chopstick)
 
 Chopstick provides two commandline programs (`chop` and `stick`) to allow for quick splitting of files into parts.
 `chop` breaks files into parts, and `stick` puts them back together again

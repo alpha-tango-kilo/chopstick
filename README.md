@@ -105,11 +105,12 @@ OPTIONS:
 
 * Better testing
 * ~~Move to [`pico_args`](https://github.com/RazrFalcon/pico-args) to reduce binary size~~
+* ✅ Add verbose commandline option
+* ✅ Add dry run commandline option
+* Limit memory usage during run (for when fitting a single part into memory is a bad idea)
 
 ### After v1.0.0
 
 * Add support for processing multiple files with a single command
-* Add verbose commandline option
-* Add dry run commandline option
 * And 'unsafe' mode which requires no additional disk space (by truncating before writing)
 * Recovering from mid-way aborted states

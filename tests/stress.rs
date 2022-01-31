@@ -3,7 +3,6 @@ use assert_cmd::Command;
 use assert_fs::fixture::ChildPath;
 use assert_fs::prelude::*;
 use assert_fs::TempDir;
-use bytesize::ByteSize;
 use chopstick::{digits, round_up_div, EXTENSION_PREFIX};
 use rand::prelude::*;
 use rand_pcg::Pcg64;
@@ -65,10 +64,10 @@ impl Split {
         (factor_one, factor_two)
     }
 
-    fn flag_val(&self) -> String {
+    fn flag_val(&self) -> u64 {
         match self.flag {
-            "-s" => ByteSize(self.part_size).to_string(),
-            "-n" => self.num_parts.to_string(),
+            "-s" => self.part_size,
+            "-n" => self.num_parts,
             _ => unreachable!(),
         }
     }
@@ -112,7 +111,7 @@ impl<const N: usize> TestScenario<N> {
             .unwrap()
             .args(&[
                 split.flag,
-                &split.flag_val(),
+                &split.flag_val().to_string(),
                 &self.original_file.path().to_string_lossy(),
             ])
             .unwrap()

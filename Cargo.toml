@@ -21,7 +21,7 @@ default-features = false
 features = ["std"]
 
 [dependencies.sysinfo]
-version = "0.22"
+version = "0.23"
 default-features = false
 
 [dev-dependencies]

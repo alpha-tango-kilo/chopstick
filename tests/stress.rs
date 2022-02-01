@@ -73,9 +73,10 @@ impl Split {
     }
 }
 
+#[derive(Default)]
 struct TestScenarioBuilder<const N: usize> {
     bytesize_formatted: bool,
-    rng: Box<dyn RngCore>,
+    rng: Option<Box<dyn RngCore>>,
 }
 
 impl<const N: usize> TestScenarioBuilder<N> {
@@ -85,16 +86,19 @@ impl<const N: usize> TestScenarioBuilder<N> {
     }
 
     fn rng<R: RngCore + 'static>(mut self, rng: R) -> Self {
-        self.rng = Box::new(rng);
+        self.rng = Some(Box::new(rng));
         self
     }
 
-    fn build(mut self) -> TestScenario<N> {
+    fn build(self) -> TestScenario<N> {
         let temp_dir = TempDir::new().unwrap();
         println!("Using temp dir {}", temp_dir.to_string_lossy());
         let original_file = temp_dir.child(FILE_NAME);
         let mut file_bytes = [0u8; N];
-        self.rng.fill_bytes(&mut file_bytes);
+
+        let mut rng = self.rng.unwrap_or_else(|| Box::new(thread_rng()));
+        rng.fill_bytes(&mut file_bytes);
+
         original_file
             .write_binary(&file_bytes)
             .expect("Failed to write test bytes to temp file");
@@ -104,15 +108,6 @@ impl<const N: usize> TestScenarioBuilder<N> {
             original_file,
             file_bytes,
             bytesize_formatted: self.bytesize_formatted,
-        }
-    }
-}
-
-impl<const N: usize> Default for TestScenarioBuilder<N> {
-    fn default() -> Self {
-        TestScenarioBuilder {
-            bytesize_formatted: false,
-            rng: Box::new(thread_rng()),
         }
     }
 }

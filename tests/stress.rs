@@ -73,23 +73,28 @@ impl Split {
     }
 }
 
-struct TestScenario<const N: usize> {
-    temp_dir: TempDir,
-    original_file: ChildPath,
-    file_bytes: [u8; N],
+struct TestScenarioBuilder<const N: usize> {
+    bytesize_formatted: bool,
+    rng: Box<dyn RngCore>,
 }
 
-impl<const N: usize> TestScenario<N> {
-    fn new() -> Self {
-        Self::new_with_rng(&mut thread_rng())
+impl<const N: usize> TestScenarioBuilder<N> {
+    fn bytesize_formatted(mut self, yes: bool) -> Self {
+        self.bytesize_formatted = yes;
+        self
     }
 
-    fn new_with_rng<R: RngCore>(rng: &mut R) -> Self {
+    fn rng<R: RngCore + 'static>(mut self, rng: R) -> Self {
+        self.rng = Box::new(rng);
+        self
+    }
+
+    fn build(mut self) -> TestScenario<N> {
         let temp_dir = TempDir::new().unwrap();
         println!("Using temp dir {}", temp_dir.to_string_lossy());
         let original_file = temp_dir.child(FILE_NAME);
         let mut file_bytes = [0u8; N];
-        rng.fill_bytes(&mut file_bytes);
+        self.rng.fill_bytes(&mut file_bytes);
         original_file
             .write_binary(&file_bytes)
             .expect("Failed to write test bytes to temp file");
@@ -98,20 +103,45 @@ impl<const N: usize> TestScenario<N> {
             temp_dir,
             original_file,
             file_bytes,
+            bytesize_formatted: self.bytesize_formatted,
         }
     }
+}
 
+impl<const N: usize> Default for TestScenarioBuilder<N> {
+    fn default() -> Self {
+        TestScenarioBuilder {
+            bytesize_formatted: false,
+            rng: Box::new(thread_rng()),
+        }
+    }
+}
+
+struct TestScenario<const N: usize> {
+    temp_dir: TempDir,
+    original_file: ChildPath,
+    file_bytes: [u8; N],
+    bytesize_formatted: bool,
+}
+
+impl<const N: usize> TestScenario<N> {
     fn run_with(&self, split: Split) {
         println!(
             "Chopping {N} byte file into {} parts, {}B each",
             split.num_parts, split.part_size,
         );
+
+        let flag_val = match self.bytesize_formatted {
+            true => bytesize::to_string(split.flag_val(), true),
+            false => split.flag_val().to_string(),
+        };
+
         // Chop
         Command::cargo_bin("chop")
             .unwrap()
             .args(&[
                 split.flag,
-                &split.flag_val().to_string(),
+                &flag_val,
                 &self.original_file.path().to_string_lossy(),
             ])
             .unwrap()
@@ -171,9 +201,15 @@ impl<const N: usize> TestScenario<N> {
     }
 }
 
+impl<const N: usize> Default for TestScenario<N> {
+    fn default() -> Self {
+        TestScenarioBuilder::<N>::default().build()
+    }
+}
+
 #[test]
 fn num_parts() {
-    let test = TestScenario::<FIVE_HUNGE_KIB>::new();
+    let test = TestScenario::<FIVE_HUNGE_KIB>::default();
     test.run_with(Split::from_num_parts(
         FIVE_HUNGE_KIB as u64,
         thread_rng().gen_range(10..=1000),
@@ -182,7 +218,7 @@ fn num_parts() {
 
 #[test]
 fn part_size() {
-    let test = TestScenario::<FIVE_HUNGE_KIB>::new();
+    let test = TestScenario::<FIVE_HUNGE_KIB>::default();
     test.run_with(Split::from_part_size(
         FIVE_HUNGE_KIB as u64,
         thread_rng().gen_range(10..=50 * 1024),
@@ -190,11 +226,25 @@ fn part_size() {
 }
 
 #[test]
+fn formatted_part_size() {
+    let test = TestScenarioBuilder::<FIVE_HUNGE_KIB>::default()
+        .bytesize_formatted(true)
+        .build();
+    // Ensure it's a nice round number so it converts losslessly to a
+    // human-readable string
+    let part_size = thread_rng().gen_range(10..=400) * 1024;
+    println!("Using {} parts", bytesize::to_string(part_size, true));
+    test.run_with(Split::from_part_size(FIVE_HUNGE_KIB as u64, part_size));
+}
+
+#[test]
 #[ignore]
 fn something_specific() {
     // https://rust-random.github.io/book/guide-seeding.html#a-simple-number
-    let mut fixed_seed = Pcg64::seed_from_u64(14);
-    let test = TestScenario::<FIVE_HUNGE_KIB>::new_with_rng(&mut fixed_seed);
+    let fixed_seed = Pcg64::seed_from_u64(14);
+    let test = TestScenarioBuilder::<FIVE_HUNGE_KIB>::default()
+        .rng(fixed_seed)
+        .build();
     test.run_with(Split::from_num_parts(FIVE_HUNGE_KIB as u64, 986));
 }
 

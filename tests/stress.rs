@@ -76,12 +76,19 @@ impl Split {
 #[derive(Default)]
 struct TestScenarioBuilder<const N: usize> {
     bytesize_formatted: bool,
+    persist: bool,
     rng: Option<Box<dyn RngCore>>,
 }
 
 impl<const N: usize> TestScenarioBuilder<N> {
     fn bytesize_formatted(mut self, yes: bool) -> Self {
         self.bytesize_formatted = yes;
+        self
+    }
+
+    #[allow(dead_code)]
+    fn persist(mut self, yes: bool) -> Self {
+        self.persist = yes;
         self
     }
 
@@ -92,6 +99,11 @@ impl<const N: usize> TestScenarioBuilder<N> {
 
     fn build(self) -> TestScenario<N> {
         let temp_dir = TempDir::new().unwrap();
+        let temp_dir = if self.persist {
+            temp_dir.into_persistent()
+        } else {
+            temp_dir
+        };
         println!("Using temp dir {}", temp_dir.to_string_lossy());
         let original_file = temp_dir.child(FILE_NAME);
         let mut file_bytes = [0u8; N];
@@ -150,9 +162,7 @@ impl<const N: usize> TestScenario<N> {
             .map(|n| (n + 1, (n * split.part_size) as usize))
             .for_each(|(part_no, file_bytes_offset)| {
                 let child_path = format!(
-                    "{}.{}{:0>width$}",
-                    FILE_NAME,
-                    EXTENSION_PREFIX,
+                    "{FILE_NAME}.{EXTENSION_PREFIX}{:0>width$}",
                     part_no,
                     width = digits(split.num_parts),
                 );
@@ -165,10 +175,15 @@ impl<const N: usize> TestScenario<N> {
                     file_bytes_offset + split.part_size as usize,
                 );
                 assert_eq!(
+                    part_bytes.len(),
+                    end_index - file_bytes_offset,
+                    "Part {part_no} of {} differs in length",
+                    split.num_parts
+                );
+                assert_eq!(
                     part_bytes.as_slice(),
                     &self.file_bytes[file_bytes_offset..end_index],
-                    "File contents differs in part {} of {}",
-                    part_no,
+                    "File contents differs in part {part_no} of {}",
                     split.num_parts,
                 );
             });
@@ -239,8 +254,9 @@ fn something_specific() {
     let fixed_seed = Pcg64::seed_from_u64(14);
     let test = TestScenarioBuilder::<FIVE_HUNGE_KIB>::default()
         .rng(fixed_seed)
+        .bytesize_formatted(true)
         .build();
-    test.run_with(Split::from_num_parts(FIVE_HUNGE_KIB as u64, 986));
+    test.run_with(Split::from_part_size(FIVE_HUNGE_KIB as u64, 13129));
 }
 
 // TODO: large files, relative directories

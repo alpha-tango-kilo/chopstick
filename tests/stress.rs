@@ -134,7 +134,7 @@ struct TestScenario<const N: usize> {
 impl<const N: usize> TestScenario<N> {
     fn run_with(&self, split: Split) {
         println!(
-            "Chopping {N} byte file into {} parts, {}B each",
+            "Chopping {N} byte file into {} parts, {} bytes each",
             split.num_parts, split.part_size,
         );
 
@@ -240,9 +240,8 @@ fn formatted_part_size() {
     let test = TestScenarioBuilder::<FIVE_HUNGE_KIB>::default()
         .bytesize_formatted(true)
         .build();
-    // Ensure it's a nice round number so it converts losslessly to a
-    // human-readable string
-    let part_size = thread_rng().gen_range(10..=400) * 1024;
+    // Ensure this is a factor of the file size else rounding errors will occur
+    let part_size = 125 * 1024;
     println!("Using {} parts", bytesize::to_string(part_size, true));
     test.run_with(Split::from_part_size(FIVE_HUNGE_KIB as u64, part_size));
 }
@@ -252,11 +251,14 @@ fn formatted_part_size() {
 fn something_specific() {
     // https://rust-random.github.io/book/guide-seeding.html#a-simple-number
     let fixed_seed = Pcg64::seed_from_u64(14);
+    let part_size = 50 * 1024;
+    println!("Using {} parts", bytesize::to_string(part_size, true));
     let test = TestScenarioBuilder::<FIVE_HUNGE_KIB>::default()
         .rng(fixed_seed)
         .bytesize_formatted(true)
+        //.persist(true)
         .build();
-    test.run_with(Split::from_part_size(FIVE_HUNGE_KIB as u64, 13129));
+    test.run_with(Split::from_part_size(FIVE_HUNGE_KIB as u64, part_size));
 }
 
 // TODO: large files, relative directories

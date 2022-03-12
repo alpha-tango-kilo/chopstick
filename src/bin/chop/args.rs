@@ -20,8 +20,8 @@ impl RunConfig {
         RunConfig::process_matches(&matches)
     }
 
-    fn create_clap_app() -> clap::App<'static> {
-        clap::App::new(env!("CARGO_PKG_NAME"))
+    fn create_clap_app() -> clap::Command<'static> {
+        clap::Command::new(env!("CARGO_PKG_NAME"))
             .version(env!("CARGO_PKG_VERSION"))
             .author("alpha-tango-kilo <git@heyatk.com>")
             .about("Separate files into parts quickly")
@@ -126,7 +126,7 @@ mod unit_tests {
         let err = clap
             .try_get_matches_from(vec![env!("CARGO_PKG_NAME"), "-n", "5"])
             .unwrap_err();
-        assert_eq!(err.kind, clap::ErrorKind::MissingRequiredArgument);
+        assert_eq!(err.kind(), clap::ErrorKind::MissingRequiredArgument);
     }
 
     #[test]
@@ -136,7 +136,7 @@ mod unit_tests {
         let err = clap
             .try_get_matches_from(vec![env!("CARGO_PKG_NAME"), "Cargo.toml"])
             .unwrap_err();
-        assert_eq!(err.kind, clap::ErrorKind::MissingRequiredArgument);
+        assert_eq!(err.kind(), clap::ErrorKind::MissingRequiredArgument);
 
         // One
         let clap = RunConfig::create_clap_app();
@@ -175,6 +175,6 @@ mod unit_tests {
                 "Cargo.toml",
             ])
             .unwrap_err();
-        assert_eq!(err.kind, clap::ErrorKind::ArgumentConflict);
+        assert_eq!(err.kind(), clap::ErrorKind::ArgumentConflict);
     }
 }

@@ -1,7 +1,7 @@
 use crate::Result;
 use crate::StickError::*;
 use chopstick::EXTENSION_PREFIX;
-use clap::{AppSettings, Arg, ArgMatches};
+use clap::{Arg, ArgMatches};
 use os_str_bytes::RawOsStr;
 use std::env;
 use std::ffi::{OsStr, OsString};
@@ -24,12 +24,12 @@ impl RunConfig {
         RunConfig::process_matches(&matches)
     }
 
-    fn create_clap_app() -> clap::App<'static> {
-        clap::App::new(env!("CARGO_PKG_NAME"))
+    fn create_clap_app() -> clap::Command<'static> {
+        clap::Command::new(env!("CARGO_PKG_NAME"))
             .version(env!("CARGO_PKG_VERSION"))
             .author("alpha-tango-kilo <git@heyatk.com>")
             .about("Reconstruct files from parts efficiently")
-            .setting(AppSettings::TrailingVarArg)
+            .trailing_var_arg(true)
             .arg(
                 Arg::new("retain")
                     .short('r')
@@ -203,7 +203,6 @@ mod test {
     use assert_fs::prelude::*;
     use assert_fs::TempDir;
     use std::ffi::OsString;
-    use std::path::PathBuf;
 
     #[test]
     fn path_discovery() {
@@ -212,7 +211,7 @@ mod test {
         (0..9).into_iter().for_each(|n| {
             let part = temp_dir.child(&format!("foo.p{}", n + 1));
             part.touch().expect("Failed to create file");
-            expected_parts.push(PathBuf::from(part.to_path_buf()));
+            expected_parts.push(part.to_path_buf());
         });
         let actual_parts = find_parts_in(&temp_dir, &OsString::from("foo"));
         assert_eq!(actual_parts, expected_parts);
@@ -225,7 +224,7 @@ mod test {
         (0..9).into_iter().for_each(|n| {
             let part = temp_dir.child(&format!("foo.p{}", n + 1));
             part.touch().expect("Failed to create file");
-            parts.push(PathBuf::from(part.to_path_buf()));
+            parts.push(part.to_path_buf());
         });
         assert!(verify_discovered_parts(&parts), "Simple case");
 
@@ -234,7 +233,7 @@ mod test {
         (0..9).into_iter().for_each(|n| {
             let part = temp_dir.child(&format!("foo.tar.gz.p{}", n + 1));
             part.touch().expect("Failed to create file");
-            parts.push(PathBuf::from(part.to_path_buf()));
+            parts.push(part.to_path_buf());
         });
         assert!(verify_discovered_parts(&parts), "Long extension");
 
@@ -243,7 +242,7 @@ mod test {
         (0..9).into_iter().for_each(|n| {
             let part = temp_dir.child(&format!("foo.p.bar.p{}", n + 1));
             part.touch().expect("Failed to create file");
-            parts.push(PathBuf::from(part.to_path_buf()));
+            parts.push(part.to_path_buf());
         });
         assert!(
             verify_discovered_parts(&parts),
@@ -259,7 +258,7 @@ mod test {
             if n != 2 {
                 let part = temp_dir.child(&format!("foo.p{}", n + 1));
                 part.touch().expect("Failed to create file");
-                parts.push(PathBuf::from(part.to_path_buf()));
+                parts.push(part.to_path_buf());
             }
         });
         assert!(!verify_discovered_parts(&parts), "One missing");
@@ -270,7 +269,7 @@ mod test {
             if n > 1 {
                 let part = temp_dir.child(&format!("foo.p{}", n + 1));
                 part.touch().expect("Failed to create file");
-                parts.push(PathBuf::from(part.to_path_buf()));
+                parts.push(part.to_path_buf());
             }
         });
         assert!(!verify_discovered_parts(&parts), "Two missing");

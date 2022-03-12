@@ -6,10 +6,10 @@ pipeline:
   test:
     image: rust:1.58
     commands:
-      - cargo test
+      - cargo test --no-fail-fast
   lint:
     image: rust:1.58
     commands:
       - rustup component add rustfmt clippy
       - cargo fmt -- --check --files-with-diff
-      - cargo clippy --no-deps
+      - cargo clippy --no-deps --tests

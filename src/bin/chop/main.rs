@@ -96,7 +96,8 @@ fn _main() -> Result<()> {
                 handle.read_to_end(&mut buffer).map_err(FailedToReadPart)?;
             }
             if config.verbose {
-                eprintln!("Read {} bytes into buffer", buffer.len());
+                let amount = bytesize::to_string(buffer.len() as u64, true);
+                eprintln!("Read {amount} bytes into buffer");
             }
 
             // Step 4: write buffer to part file, then clear buffer

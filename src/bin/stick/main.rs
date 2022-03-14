@@ -1,8 +1,9 @@
 use crate::args::RunConfig;
 use crate::StickError::*;
-use chopstick::sufficient_disk_space;
+use chopstick::{max_buffer_size, sufficient_disk_space};
 pub use error::*;
-use std::fs::OpenOptions;
+use std::cmp::min;
+use std::fs::{File, OpenOptions};
 use std::io::{Read, Write};
 use std::path::Path;
 use std::{fs, io, process};
@@ -19,7 +20,9 @@ fn main() {
 
 fn _main() -> Result<()> {
     let mut config = RunConfig::new()?;
-    let mut buffer = Vec::new();
+    let buffer_size = min(config.part_size, max_buffer_size()) as usize;
+    // Buffer must be filled in order to be used in a PartialReader
+    let mut buffer: Vec<u8> = vec![0; buffer_size];
 
     // Disk space check (only applies for retain)
     if config.retain {
@@ -100,35 +103,22 @@ fn _main() -> Result<()> {
         .part_paths
         .iter()
         .try_for_each(|part_path| -> Result<()> {
-            // Step 1: read part into memory
-            if !config.dry_run {
-                let mut part = OpenOptions::new()
-                    .read(true)
-                    .open(part_path)
-                    .map_err(|err| ReadPart(part_path.clone(), err))?;
-                part.read_to_end(&mut buffer)
-                    .map_err(|err| ReadPart(part_path.clone(), err))?;
-            }
-            if config.verbose {
-                eprintln!("Read {} into buffer", part_path.to_string_lossy());
-            }
-
-            // Step 2: write buffer to original file
-            if !config.dry_run {
+            // TODO: verbosity & dry runs
+            // Step 1: read & write in chunks, controlled by PartialReader
+            let mut reader = PartialReader::new(part_path, &mut buffer)
+                .map_err(|err| ReadPart(part_path.clone(), err))?;
+            while let Some(bytes) = reader
+                .read()
+                .map_err(|err| ReadPart(part_path.clone(), err))?
+            {
                 original_file
                     .as_mut()
                     .unwrap()
-                    .write_all(&buffer)
+                    .write_all(bytes)
                     .map_err(WriteOriginal)?;
             }
-            if config.verbose {
-                eprintln!("Appended buffer to original file");
-            }
 
-            // Step 3: clear buffer
-            buffer.clear();
-
-            // Step 4: delete part file
+            // Step 2: delete part file
             if !config.retain {
                 if !config.dry_run {
                     fs::remove_file(part_path)
@@ -156,6 +146,58 @@ fn total_part_size<P: AsRef<Path>>(paths: &[P]) -> Result<u64, io::Error> {
     let first = fs::metadata(&paths[0])?.len();
     let last = fs::metadata(paths.last().unwrap())?.len();
     Ok(first * (paths.len() as u64 - 1) + last)
+}
+
+struct PartialReader<'a> {
+    file: File,
+    buffer: &'a mut Vec<u8>,
+    file_size: usize,
+    bytes_read: usize,
+}
+
+impl<'a> PartialReader<'a> {
+    fn new<P: AsRef<Path>>(path: P, buffer: &'a mut Vec<u8>) -> io::Result<Self> {
+        debug_assert_eq!(
+            buffer.len(),
+            buffer.capacity(),
+            "PartialReader's buffer must come initialised",
+        );
+        let file = File::open(path)?;
+        let file_size = file.metadata()?.len() as usize;
+        Ok(PartialReader {
+            file,
+            buffer,
+            file_size,
+            bytes_read: 0,
+        })
+    }
+
+    fn read(&mut self) -> io::Result<Option<&[u8]>> {
+        if self.done() {
+            return Ok(None);
+        } else if self.buffer.capacity() > self.file_size - self.bytes_read {
+            // Clear the buffer when we're going to use read_to_end as it's
+            // Vec-aware
+            self.buffer.clear();
+            // Going to reach end of file, just read it all
+            self.bytes_read += self.file.read_to_end(self.buffer)?;
+        } else {
+            // Assumes the buffer to be full. Read isn't Vec-aware so will only
+            // read as many bytes as are already in the Vec. This is why we
+            // ensure the buffer provided comes filled
+            debug_assert_eq!(
+                self.buffer.len(),
+                self.buffer.capacity(),
+                "Buffer should have data in at this point",
+            );
+            self.bytes_read += self.file.read(self.buffer)?;
+        }
+        Ok(Some(self.buffer))
+    }
+
+    fn done(&self) -> bool {
+        self.bytes_read == self.file_size
+    }
 }
 
 #[cfg(test)]

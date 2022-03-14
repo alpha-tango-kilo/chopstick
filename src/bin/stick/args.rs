@@ -3,9 +3,9 @@ use crate::StickError::*;
 use chopstick::EXTENSION_PREFIX;
 use clap::{Arg, ArgMatches};
 use os_str_bytes::RawOsStr;
-use std::env;
 use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
+use std::{env, fs};
 use walkdir::WalkDir;
 
 #[derive(Debug)]
@@ -13,6 +13,7 @@ pub struct RunConfig {
     pub original_file: PathBuf,
     // Ordered list of parts
     pub part_paths: Vec<PathBuf>,
+    pub part_size: u64,
     pub retain: bool,
     pub verbose: bool,
     pub dry_run: bool,
@@ -87,13 +88,16 @@ impl RunConfig {
             None => env::current_dir().map_err(BadParent)?,
         };
 
-        let discovered_paths = find_parts_in(&parent_folder, &search_stem);
+        let mut discovered_paths = find_parts_in(&parent_folder, &search_stem);
 
         if discovered_paths.is_empty() {
             Err(NoParts)
         } else if discovered_paths.len() > 1
             && verify_discovered_parts(&discovered_paths)
         {
+            let part_size = fs::metadata(&discovered_paths[0])
+                .map_err(|err| ReadPart(discovered_paths.remove(0), err))?
+                .len();
             // Add file name onto parent folder to reconstruct file into
             // If we don't use parent_folder here, the file will be recreated
             // in the working directory, instead of the file's directory
@@ -101,6 +105,7 @@ impl RunConfig {
             Ok(RunConfig {
                 original_file: parent_folder,
                 part_paths: discovered_paths,
+                part_size,
                 retain,
                 verbose,
                 dry_run,

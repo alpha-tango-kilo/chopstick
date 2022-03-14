@@ -1,7 +1,9 @@
+use std::cmp::min;
 use std::path::Path;
 use sysinfo::{DiskExt, System, SystemExt};
 
 pub const EXTENSION_PREFIX: &str = "p";
+const DEFAULT_MAX_BUFFER_SIZE: u64 = 512 * 1024 * 1024; // 512 MiB
 
 pub const fn digits(num: u64) -> usize {
     if num < 10 {
@@ -52,6 +54,20 @@ pub fn sufficient_disk_space(
             .ok_or(err)
     } else {
         Err("unable to check if there is enough free disk space for this operation")
+    }
+}
+
+pub fn max_buffer_size() -> u64 {
+    if System::IS_SUPPORTED {
+        let mut system = System::new();
+        system.refresh_memory();
+        let total = system.total_memory() * 1000;
+        let available = system.available_memory() * 1000;
+        // Use at most either an eighth of total memory, or half the available,
+        // whichever's smallest
+        min(total / 8, available / 2)
+    } else {
+        DEFAULT_MAX_BUFFER_SIZE
     }
 }
 

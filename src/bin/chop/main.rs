@@ -1,14 +1,12 @@
 use crate::ChopError::*;
 use args::RunConfig;
-use chopstick::{digits, max_buffer_size, sufficient_disk_space};
+use chopstick::{digits, max_buffer_size, sufficient_disk_space, ChunkedReader};
 pub use error::*;
 pub use lib::*;
 use std::cmp::min;
-use std::fs::{File, OpenOptions};
-use std::io::{Read, Seek, SeekFrom, Write};
-use std::ops::Range;
-use std::path::Path;
-use std::{fs, io, mem, process};
+use std::fs::OpenOptions;
+use std::io::Write;
+use std::{fs, mem, process};
 
 mod args;
 mod error;
@@ -43,7 +41,19 @@ fn _main() -> Result<()> {
 
     // Cast is saturating if part_size > usize::MAX
     let buffer_size = min(config.split.part_size, max_buffer_size()) as usize;
-    let mut reader = RangeReader::new(&config.path, buffer_size)?;
+    if config.verbose {
+        eprintln!(
+            "Chose buffer size of {}",
+            bytesize::to_string(buffer_size as u64, true),
+        );
+    }
+
+    let original_file = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(&config.path)
+        .map_err(FailedToReadPart)?;
+    let mut reader = ChunkedReader::new(original_file, buffer_size);
     let zero_pad_width = digits(config.split.num_parts) as usize;
 
     if config.verbose {
@@ -57,12 +67,11 @@ fn _main() -> Result<()> {
         .rev()
         .map(|part| {
             let start = part * config.split.part_size;
-            let end = min(start + config.split.part_size, file_size);
             let part_path =
                 get_part_path_buf(&config.path, part + 1, zero_pad_width);
-            (start, end, part_path)
+            (start, part_path)
         })
-        .try_for_each(|(start, end, part_path)| -> Result<()> {
+        .try_for_each(|(start, part_path)| -> Result<()> {
             // TODO: verbose & dry-run
             let mut part_file = OpenOptions::new()
                 .write(true)
@@ -78,7 +87,7 @@ fn _main() -> Result<()> {
                     }
                 })?;
 
-            reader.change_range(start..end)?;
+            reader.seek_to(start)?;
             while let Some(bytes) = reader.read().map_err(FailedToReadPart)? {
                 part_file
                     .write_all(bytes)
@@ -86,7 +95,7 @@ fn _main() -> Result<()> {
             }
 
             if !config.retain {
-                reader.file.set_len(end).map_err(FailedToTruncate)?;
+                reader.file.set_len(start).map_err(FailedToTruncate)?;
             }
             Ok(())
         })?;
@@ -108,41 +117,4 @@ fn _main() -> Result<()> {
     }
 
     Ok(())
-}
-
-struct RangeReader {
-    pub file: File,
-    buffer: Vec<u8>,
-    end: u64,
-}
-
-impl RangeReader {
-    fn new<P: AsRef<Path>>(path: P, buffer_size: usize) -> io::Result<Self> {
-        let file = OpenOptions::new().read(true).write(true).open(path)?;
-        Ok(RangeReader {
-            file,
-            buffer: vec![0; buffer_size],
-            end: 0,
-        })
-    }
-
-    fn change_range(&mut self, range: Range<u64>) -> io::Result<()> {
-        self.end = range.end;
-        self.file.seek(SeekFrom::Start(range.start))?;
-        Ok(())
-    }
-
-    fn read(&mut self) -> io::Result<Option<&[u8]>> {
-        if self.bytes_left()? == 0 {
-            Ok(None)
-        } else {
-            let bytes_read = self.file.read(&mut self.buffer)?;
-            Ok(Some(&self.buffer[..bytes_read]))
-        }
-    }
-
-    // stream_position requires mutability
-    fn bytes_left(&mut self) -> io::Result<u64> {
-        self.file.stream_position().map(|index| self.end - index)
-    }
 }

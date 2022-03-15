@@ -1,9 +1,52 @@
 use std::cmp::min;
+use std::fs::File;
+use std::io;
+use std::io::{Read, Seek, SeekFrom};
 use std::path::Path;
 use sysinfo::{DiskExt, System, SystemExt};
 
 pub const EXTENSION_PREFIX: &str = "p";
 const DEFAULT_MAX_BUFFER_SIZE: u64 = 512 * 1024 * 1024; // 512 MiB
+
+pub struct ChunkedReader {
+    pub file: File,
+    buffer: Vec<u8>,
+}
+
+impl ChunkedReader {
+    pub fn new(file: File, buffer_size: usize) -> Self {
+        ChunkedReader {
+            file,
+            buffer: vec![0; buffer_size],
+        }
+    }
+
+    pub fn seek_to(&mut self, index: u64) -> io::Result<()> {
+        debug_assert!(
+            index < self.file.metadata()?.len(),
+            "Out of bounds of file size",
+        );
+        self.file.seek(SeekFrom::Start(index))?;
+        Ok(())
+    }
+
+    pub fn read(&mut self) -> io::Result<Option<&[u8]>> {
+        let bytes_to_end = self.bytes_left()?;
+        if bytes_to_end == 0 {
+            Ok(None)
+        } else {
+            let bytes_read = self.file.read(&mut self.buffer)?;
+            Ok(Some(&self.buffer[..bytes_read]))
+        }
+    }
+
+    // stream_position requires mutability
+    fn bytes_left(&mut self) -> io::Result<u64> {
+        let index = self.file.stream_position()?;
+        let file_size = self.file.metadata()?.len();
+        Ok(file_size - index)
+    }
+}
 
 pub const fn digits(num: u64) -> usize {
     if num < 10 {

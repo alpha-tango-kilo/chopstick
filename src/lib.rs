@@ -31,14 +31,25 @@ impl<'a> ChunkedReader<'a> {
     pub fn seek_to(&mut self, index: u64) -> io::Result<()> {
         debug_assert!(
             index < self.file.metadata()?.len(),
-            "Out of bounds of file size",
+            "index out of bounds of file size",
         );
         self.file.seek(SeekFrom::Start(index))?;
         Ok(())
     }
 
     pub fn read(&mut self) -> io::Result<Option<&[u8]>> {
-        let bytes_to_end = self.bytes_left()?;
+        self.read_up_to(self.file_size()? - 1)
+    }
+
+    pub fn read_up_to(
+        &mut self,
+        until_index: u64,
+    ) -> io::Result<Option<&[u8]>> {
+        debug_assert!(
+            until_index < self.file_size()?,
+            "index out of bounds of file size",
+        );
+        let bytes_to_end = self.bytes_left(until_index)?;
         if bytes_to_end == 0 {
             Ok(None)
         } else {
@@ -54,10 +65,13 @@ impl<'a> ChunkedReader<'a> {
     }
 
     // stream_position requires mutability
-    fn bytes_left(&mut self) -> io::Result<u64> {
-        let index = self.file.stream_position()?;
-        let file_size = self.file.metadata()?.len();
-        Ok(file_size - index)
+    fn bytes_left(&mut self, until_index: u64) -> io::Result<u64> {
+        let current_index = self.file.stream_position()?;
+        Ok(until_index.saturating_sub(current_index))
+    }
+
+    fn file_size(&self) -> io::Result<u64> {
+        self.file.metadata().map(|md| md.len())
     }
 }
 

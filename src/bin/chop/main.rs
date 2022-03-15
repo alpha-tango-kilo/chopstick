@@ -70,11 +70,12 @@ fn _main() -> Result<()> {
         .rev()
         .map(|part| {
             let start = part * config.split.part_size;
+            let end = min(start + config.split.part_size, file_size);
             let part_path =
                 get_part_path_buf(&config.path, part + 1, zero_pad_width);
-            (start, part_path)
+            (start, end, part_path)
         })
-        .try_for_each(|(start, part_path)| -> Result<()> {
+        .try_for_each(|(start, end, part_path)| -> Result<()> {
             let mut part_file = if !config.dry_run {
                 OpenOptions::new()
                     .write(true)
@@ -101,7 +102,7 @@ fn _main() -> Result<()> {
             if !config.dry_run {
                 reader.seek_to(start)?;
                 while let Some(bytes) =
-                    reader.read().map_err(FailedToReadPart)?
+                    reader.read_up_to(end - 1).map_err(FailedToReadPart)?
                 {
                     part_file.as_mut().unwrap().write_all(bytes).map_err(
                         |err| FailedToWritePart(part_path.clone(), err),

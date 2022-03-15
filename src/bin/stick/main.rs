@@ -1,12 +1,12 @@
 use crate::args::RunConfig;
 use crate::StickError::*;
-use chopstick::{max_buffer_size, sufficient_disk_space};
+use chopstick::{ChunkedReader, max_buffer_size, sufficient_disk_space};
 pub use error::*;
 use std::cmp::min;
 use std::fs::{File, OpenOptions};
-use std::io::{Read, Write};
+use std::io::Write;
 use std::path::Path;
-use std::{fs, io, process};
+use std::{fs, io, mem, process};
 
 mod args;
 mod error;
@@ -104,9 +104,10 @@ fn _main() -> Result<()> {
         .iter()
         .try_for_each(|part_path| -> Result<()> {
             // TODO: verbosity & dry runs
-            // Step 1: read & write in chunks, controlled by PartialReader
-            let mut reader = PartialReader::new(part_path, &mut buffer)
-                .map_err(|err| ReadPart(part_path.clone(), err))?;
+            // Step 1: read & write in chunks, controlled by ChunkedReader
+            let part = File::open(part_path).map_err(|err| ReadPart(part_path.clone(), err))?;
+            let mut reader = ChunkedReader::new(part, &mut buffer);
+
             while let Some(bytes) = reader
                 .read()
                 .map_err(|err| ReadPart(part_path.clone(), err))?
@@ -119,6 +120,8 @@ fn _main() -> Result<()> {
             }
 
             // Step 2: delete part file
+            // Drop reader so file is no longer open
+            mem::drop(reader);
             if !config.retain {
                 if !config.dry_run {
                     fs::remove_file(part_path)
@@ -146,58 +149,6 @@ fn total_part_size<P: AsRef<Path>>(paths: &[P]) -> Result<u64, io::Error> {
     let first = fs::metadata(&paths[0])?.len();
     let last = fs::metadata(paths.last().unwrap())?.len();
     Ok(first * (paths.len() as u64 - 1) + last)
-}
-
-struct PartialReader<'a> {
-    file: File,
-    buffer: &'a mut Vec<u8>,
-    file_size: usize,
-    bytes_read: usize,
-}
-
-impl<'a> PartialReader<'a> {
-    fn new<P: AsRef<Path>>(path: P, buffer: &'a mut Vec<u8>) -> io::Result<Self> {
-        debug_assert_eq!(
-            buffer.len(),
-            buffer.capacity(),
-            "PartialReader's buffer must come initialised",
-        );
-        let file = File::open(path)?;
-        let file_size = file.metadata()?.len() as usize;
-        Ok(PartialReader {
-            file,
-            buffer,
-            file_size,
-            bytes_read: 0,
-        })
-    }
-
-    fn read(&mut self) -> io::Result<Option<&[u8]>> {
-        if self.done() {
-            return Ok(None);
-        } else if self.buffer.capacity() > self.file_size - self.bytes_read {
-            // Clear the buffer when we're going to use read_to_end as it's
-            // Vec-aware
-            self.buffer.clear();
-            // Going to reach end of file, just read it all
-            self.bytes_read += self.file.read_to_end(self.buffer)?;
-        } else {
-            // Assumes the buffer to be full. Read isn't Vec-aware so will only
-            // read as many bytes as are already in the Vec. This is why we
-            // ensure the buffer provided comes filled
-            debug_assert_eq!(
-                self.buffer.len(),
-                self.buffer.capacity(),
-                "Buffer should have data in at this point",
-            );
-            self.bytes_read += self.file.read(self.buffer)?;
-        }
-        Ok(Some(self.buffer))
-    }
-
-    fn done(&self) -> bool {
-        self.bytes_read == self.file_size
-    }
 }
 
 #[cfg(test)]

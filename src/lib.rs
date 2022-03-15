@@ -8,16 +8,21 @@ use sysinfo::{DiskExt, System, SystemExt};
 pub const EXTENSION_PREFIX: &str = "p";
 const DEFAULT_MAX_BUFFER_SIZE: u64 = 512 * 1024 * 1024; // 512 MiB
 
-pub struct ChunkedReader {
+pub struct ChunkedReader<'a> {
     pub file: File,
-    buffer: Vec<u8>,
+    buffer: &'a mut Vec<u8>,
 }
 
-impl ChunkedReader {
-    pub fn new(file: File, buffer_size: usize) -> Self {
+impl<'a> ChunkedReader<'a> {
+    pub fn new(file: File, buffer: &'a mut Vec<u8>) -> Self {
+        debug_assert_eq!(
+            buffer.len(),
+            buffer.capacity(),
+            "Buffer should be filled with data to its capacity"
+        );
         ChunkedReader {
             file,
-            buffer: vec![0; buffer_size],
+            buffer,
         }
     }
 
@@ -35,7 +40,7 @@ impl ChunkedReader {
         if bytes_to_end == 0 {
             Ok(None)
         } else {
-            let bytes_read = self.file.read(&mut self.buffer)?;
+            let bytes_read = self.file.read(self.buffer)?;
             Ok(Some(&self.buffer[..bytes_read]))
         }
     }

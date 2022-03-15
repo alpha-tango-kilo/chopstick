@@ -41,6 +41,7 @@ fn _main() -> Result<()> {
 
     // Cast is saturating if part_size > usize::MAX
     let buffer_size = min(config.split.part_size, max_buffer_size()) as usize;
+    let mut buffer = vec![0; buffer_size];
     if config.verbose {
         eprintln!(
             "Chose buffer size of {}",
@@ -53,7 +54,7 @@ fn _main() -> Result<()> {
         .write(true)
         .open(&config.path)
         .map_err(FailedToReadPart)?;
-    let mut reader = ChunkedReader::new(original_file, buffer_size);
+    let mut reader = ChunkedReader::new(original_file, &mut buffer);
     let zero_pad_width = digits(config.split.num_parts) as usize;
 
     if config.verbose {
@@ -103,6 +104,7 @@ fn _main() -> Result<()> {
     // Drop isn't strictly necessary but saves me trying to use it after the
     // file is deleted
     mem::drop(reader);
+    mem::drop(buffer);
     if !config.retain {
         if !config.dry_run {
             fs::remove_file(&config.path).map_err(FailedToDeleteOriginal)?;

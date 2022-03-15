@@ -1,6 +1,6 @@
 use crate::args::RunConfig;
 use crate::StickError::*;
-use chopstick::{ChunkedReader, max_buffer_size, sufficient_disk_space};
+use chopstick::{max_buffer_size, sufficient_disk_space, ChunkedReader};
 pub use error::*;
 use std::cmp::min;
 use std::fs::{File, OpenOptions};
@@ -103,20 +103,37 @@ fn _main() -> Result<()> {
         .part_paths
         .iter()
         .try_for_each(|part_path| -> Result<()> {
-            // TODO: verbosity & dry runs
             // Step 1: read & write in chunks, controlled by ChunkedReader
-            let part = File::open(part_path).map_err(|err| ReadPart(part_path.clone(), err))?;
-            let mut reader = ChunkedReader::new(part, &mut buffer);
+            let mut reader = if !config.dry_run {
+                let part = File::open(part_path)
+                    .map_err(|err| ReadPart(part_path.clone(), err))?;
+                ChunkedReader::new(part, &mut buffer, config.verbose).into()
+            } else {
+                None
+            };
+            if config.verbose {
+                // Extra new line for some nice spacing
+                eprintln!("\nReading from {}", part_path.to_string_lossy(),);
+            }
 
-            while let Some(bytes) = reader
-                .read()
-                .map_err(|err| ReadPart(part_path.clone(), err))?
-            {
-                original_file
+            if !config.dry_run {
+                while let Some(bytes) = reader
                     .as_mut()
                     .unwrap()
-                    .write_all(bytes)
-                    .map_err(WriteOriginal)?;
+                    .read()
+                    .map_err(|err| ReadPart(part_path.clone(), err))?
+                {
+                    original_file
+                        .as_mut()
+                        .unwrap()
+                        .write_all(bytes)
+                        .map_err(WriteOriginal)?;
+                }
+                if config.verbose {
+                    eprintln!("Wrote buffer to original file");
+                }
+            } else if config.verbose {
+                eprintln!("[reading and writing happens]");
             }
 
             // Step 2: delete part file
@@ -136,7 +153,8 @@ fn _main() -> Result<()> {
         })?;
 
     if config.verbose && !config.dry_run {
-        eprintln!("Finished without error!");
+        // Extra new line for flair
+        eprintln!("\nFinished without error!");
     }
 
     Ok(())

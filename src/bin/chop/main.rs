@@ -1,6 +1,8 @@
 use crate::ChopError::*;
 use args::RunConfig;
-use chopstick::{digits, max_buffer_size, sufficient_disk_space, ChunkedReader};
+use chopstick::{
+    digits, max_buffer_size, sufficient_disk_space, ChunkedReader,
+};
 pub use error::*;
 pub use lib::*;
 use std::cmp::min;
@@ -32,11 +34,14 @@ fn _main() -> Result<()> {
     match sufficient_disk_space(&config.path, space_needed) {
         Ok(true) => {
             if config.verbose {
-                eprintln!("Enough disk space available for operation");
+                eprintln!(
+                    "Sufficient disk space available ({})",
+                    bytesize::to_string(space_needed, true),
+                );
             }
         }
         Ok(false) => return Err(InsufficientDiskSpace),
-        Err(warn) => eprintln!("WARNING: {}", warn),
+        Err(warn) => eprintln!("WARNING: {warn}"),
     }
 
     // Cast is saturating if part_size > usize::MAX
@@ -44,7 +49,7 @@ fn _main() -> Result<()> {
     let mut buffer = vec![0; buffer_size];
     if config.verbose {
         eprintln!(
-            "Chose buffer size of {}",
+            "Allocated {} buffer",
             bytesize::to_string(buffer_size as u64, true),
         );
     }
@@ -54,12 +59,9 @@ fn _main() -> Result<()> {
         .write(true)
         .open(&config.path)
         .map_err(FailedToReadPart)?;
-    let mut reader = ChunkedReader::new(original_file, &mut buffer);
+    let mut reader =
+        ChunkedReader::new(original_file, &mut buffer, config.verbose);
     let zero_pad_width = digits(config.split.num_parts) as usize;
-
-    if config.verbose {
-        eprintln!("File opened and buffer created");
-    }
 
     (0..config.split.num_parts)
         .into_iter()
@@ -73,33 +75,63 @@ fn _main() -> Result<()> {
             (start, part_path)
         })
         .try_for_each(|(start, part_path)| -> Result<()> {
-            // TODO: verbose & dry-run
-            let mut part_file = OpenOptions::new()
-                .write(true)
-                .create_new(true)
-                .open(&part_path)
-                .map_err(|err| {
-                    use std::io::ErrorKind::*;
-                    match err.kind() {
-                        AlreadyExists => {
-                            PartFileAlreadyExists(part_path.clone())
+            let mut part_file = if !config.dry_run {
+                OpenOptions::new()
+                    .write(true)
+                    .create_new(true)
+                    .open(&part_path)
+                    .map_err(|err| {
+                        use std::io::ErrorKind::*;
+                        match err.kind() {
+                            AlreadyExists => {
+                                PartFileAlreadyExists(part_path.clone())
+                            }
+                            _ => err.into(),
                         }
-                        _ => err.into(),
-                    }
-                })?;
+                    })?
+                    .into()
+            } else {
+                None
+            };
+            if config.verbose {
+                // Extra newline for some nice spacing
+                eprintln!("\nCreated {}", part_path.to_string_lossy());
+            }
 
-            reader.seek_to(start)?;
-            while let Some(bytes) = reader.read().map_err(FailedToReadPart)? {
-                part_file
-                    .write_all(bytes)
-                    .map_err(|err| FailedToWritePart(part_path.clone(), err))?;
+            if !config.dry_run {
+                reader.seek_to(start)?;
+                while let Some(bytes) =
+                    reader.read().map_err(FailedToReadPart)?
+                {
+                    part_file.as_mut().unwrap().write_all(bytes).map_err(
+                        |err| FailedToWritePart(part_path.clone(), err),
+                    )?;
+                    if config.verbose {
+                        eprintln!("Wrote buffer to part file");
+                    }
+                }
+            } else if config.verbose {
+                eprintln!("[reading and writing happens]");
             }
 
             if !config.retain {
-                reader.file.set_len(start).map_err(FailedToTruncate)?;
+                if !config.dry_run {
+                    reader.file.set_len(start).map_err(FailedToTruncate)?;
+                }
+                if config.verbose {
+                    eprintln!(
+                        "Truncated original file to {}",
+                        bytesize::to_string(start, true),
+                    );
+                }
             }
+
             Ok(())
         })?;
+    // Extra newline for some nice spacing
+    if config.verbose {
+        eprintln!();
+    }
 
     // Drop isn't strictly necessary but saves me trying to use it after the
     // file is deleted

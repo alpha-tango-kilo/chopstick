@@ -11,10 +11,11 @@ const DEFAULT_MAX_BUFFER_SIZE: u64 = 512 * 1024 * 1024; // 512 MiB
 pub struct ChunkedReader<'a> {
     pub file: File,
     buffer: &'a mut Vec<u8>,
+    verbose: bool,
 }
 
 impl<'a> ChunkedReader<'a> {
-    pub fn new(file: File, buffer: &'a mut Vec<u8>) -> Self {
+    pub fn new(file: File, buffer: &'a mut Vec<u8>, verbose: bool) -> Self {
         debug_assert_eq!(
             buffer.len(),
             buffer.capacity(),
@@ -23,6 +24,7 @@ impl<'a> ChunkedReader<'a> {
         ChunkedReader {
             file,
             buffer,
+            verbose,
         }
     }
 
@@ -41,6 +43,12 @@ impl<'a> ChunkedReader<'a> {
             Ok(None)
         } else {
             let bytes_read = self.file.read(self.buffer)?;
+            if self.verbose {
+                eprintln!(
+                    "Read {} into buffer",
+                    bytesize::to_string(bytes_read as u64, true),
+                );
+            }
             Ok(Some(&self.buffer[..bytes_read]))
         }
     }

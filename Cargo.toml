@@ -34,3 +34,8 @@ rand_pcg = "0.3"
 lto = true
 codegen-units = 1
 panic = "abort"
+
+[profile.tiny]
+inherits = "release"
+opt-level = "z"
+strip = true

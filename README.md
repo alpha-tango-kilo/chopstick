@@ -103,11 +103,11 @@ OPTIONS:
 
 ### To stable! (v1.0.0)
 
-* Better testing
+* ✅ Better testing
 * ~~Move to [`pico_args`](https://github.com/RazrFalcon/pico-args) to reduce binary size~~
 * ✅ Add verbose commandline option
 * ✅ Add dry run commandline option
-* Limit memory usage during run (for when fitting a single part into memory is a bad idea)
+* ✅ Limit memory usage during run (for when fitting a single part into memory is a bad idea)
 
 ### After v1.0.0
 

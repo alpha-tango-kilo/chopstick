@@ -35,7 +35,7 @@ fn _main() -> Result<()> {
         Ok(true) => {
             if config.verbose {
                 eprintln!(
-                    "Sufficient disk space available ({})",
+                    "Sufficient disk space available ({} needed)",
                     bytesize::to_string(space_needed, true),
                 );
             }

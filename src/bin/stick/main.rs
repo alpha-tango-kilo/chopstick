@@ -20,27 +20,34 @@ fn main() {
 
 fn _main() -> Result<()> {
     let mut config = RunConfig::new()?;
+
+    // Disk space check
+    let space_needed = if !config.retain {
+        fs::metadata(&config.part_paths[0]).map(|md| md.len())
+    } else {
+        total_part_size(&config.part_paths)
+    };
+    match space_needed {
+        Ok(space_needed) => {
+            match sufficient_disk_space(&config.original_file, space_needed) {
+                Ok(true) => {
+                    if config.verbose {
+                        eprintln!(
+                            "Sufficient disk space available ({} needed)",
+                            bytesize::to_string(space_needed, true),
+                        );
+                    }
+                }
+                Ok(false) => return Err(InsufficientDiskSpace),
+                Err(warn) => eprintln!("WARNING: {warn}"),
+            }
+        }
+        Err(why) => eprintln!("WARNING: unable to read part file sizes to check if space is available ({why})"),
+    }
+
     let buffer_size = min(config.part_size, max_buffer_size()) as usize;
     // Buffer must be filled in order to be used in a PartialReader
     let mut buffer: Vec<u8> = vec![0; buffer_size];
-
-    // Disk space check (only applies for retain)
-    if config.retain {
-        match total_part_size(&config.part_paths) {
-            Ok(required_space) => {
-                match sufficient_disk_space(&config.original_file, required_space) {
-                    Ok(true) => {
-                        if config.verbose {
-                            eprintln!("Enough disk space available for operation");
-                        }
-                    }
-                    Ok(false) => return Err(InsufficientDiskSpace),
-                    Err(warn) => eprintln!("WARNING: {}", warn),
-                }
-            }
-            Err(why) => eprintln!("WARNING: unable to read part file sizes to check if space is available ({})", why),
-        }
-    }
 
     let mut original_file = if !config.retain {
         // Check the original file doesn't already exist, so as not to
@@ -160,7 +167,7 @@ fn _main() -> Result<()> {
     Ok(())
 }
 
-fn total_part_size<P: AsRef<Path>>(paths: &[P]) -> Result<u64, io::Error> {
+fn total_part_size<P: AsRef<Path>>(paths: &[P]) -> io::Result<u64> {
     // All parts are the same size but the last one, so just multiply the size
     // of the first part by paths.len() - 1, then add the size of the last part
     debug_assert!(paths.len() >= 2);
